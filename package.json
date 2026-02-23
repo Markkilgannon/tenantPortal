@@ -1,0 +1,24 @@
+{
+  "name": "tenantportal",
+  "version": "1.0.0",
+  "description": "README.md",
+  "main": "app.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Markkilgannon/tenantPortal.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Markkilgannon/tenantPortal/issues"
+  },
+  "homepage": "https://github.com/Markkilgannon/tenantPortal#readme",
+  "dependencies": {
+    "jose": "^6.1.3"
+  }
+}
