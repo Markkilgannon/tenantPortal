@@ -1,21 +1,335 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Tenant Portal</title>
+  <meta name="description" content="Tenant Portal login and API test" />
+
+  <style>
+    :root {
+      --bg: #0b1220;
+      --card: rgba(255, 255, 255, 0.06);
+      --card-border: rgba(255, 255, 255, 0.12);
+      --text: rgba(255, 255, 255, 0.92);
+      --muted: rgba(255, 255, 255, 0.68);
+      --accent: #6ea8ff;
+      --accent-2: #7cf0c5;
+      --danger: #ff6b6b;
+      --shadow: 0 20px 60px rgba(0,0,0,0.45);
+      --radius: 16px;
+      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      font-family: var(--sans);
+      color: var(--text);
+      background:
+        radial-gradient(900px 500px at 20% 10%, rgba(110,168,255,0.25), transparent 55%),
+        radial-gradient(700px 500px at 80% 30%, rgba(124,240,197,0.16), transparent 55%),
+        linear-gradient(180deg, #070b14 0%, #0b1220 60%, #070b14 100%);
+      display: grid;
+      place-items: center;
+      padding: 24px;
+    }
+
+    .wrap {
+      width: 100%;
+      max-width: 980px;
+      display: grid;
+      gap: 18px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 16px 18px;
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-width: 220px;
+    }
+
+    .logo {
+      width: 38px;
+      height: 38px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--accent), var(--accent-2));
+      box-shadow: 0 12px 26px rgba(110,168,255,0.22);
+      flex: 0 0 auto;
+    }
+
+    .title {
+      display: grid;
+      gap: 2px;
+    }
+    .title h1 {
+      font-size: 16px;
+      margin: 0;
+      letter-spacing: 0.2px;
+    }
+    .title p {
+      margin: 0;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .actions {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: flex-end;
+    }
+
+    .btn {
+      appearance: none;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 0.05s ease, background 0.15s ease, border-color 0.15s ease;
+      line-height: 1;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      user-select: none;
+    }
+    .btn:hover {
+      background: rgba(255,255,255,0.10);
+      border-color: rgba(255,255,255,0.20);
+    }
+    .btn:active { transform: translateY(1px); }
+    .btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+
+    .btn-primary {
+      background: linear-gradient(135deg, rgba(110,168,255,0.95), rgba(124,240,197,0.65));
+      border-color: transparent;
+      color: #06101f;
+    }
+    .btn-primary:hover {
+      filter: brightness(1.03);
+    }
+
+    .btn-danger {
+      border-color: rgba(255, 107, 107, 0.35);
+      background: rgba(255, 107, 107, 0.10);
+    }
+
+    main {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+
+    .card {
+      padding: 16px 18px;
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      overflow: hidden;
+    }
+
+    .grid {
+      display: grid;
+      gap: 14px;
+      grid-template-columns: 1.2fr 0.8fr;
+      align-items: start;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 13px;
+      margin: 0;
+      line-height: 1.45;
+    }
+
+    .statusRow {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+
+    .pill {
+      padding: 7px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.06);
+      color: var(--muted);
+      font-size: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.35);
+      box-shadow: 0 0 0 3px rgba(255,255,255,0.08);
+    }
+
+    pre {
+      margin: 0;
+      padding: 14px;
+      border-radius: 14px;
+      background: rgba(0, 0, 0, 0.35);
+      border: 1px solid rgba(255,255,255,0.12);
+      overflow: auto;
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.55;
+      color: rgba(255,255,255,0.86);
+      max-height: 420px;
+    }
+
+    .footer {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      color: var(--muted);
+      font-size: 12px;
+      padding: 0 2px;
+      flex-wrap: wrap;
+    }
+    .footer a { color: rgba(110,168,255,0.9); text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
+
+    @media (max-width: 860px) {
+      .grid { grid-template-columns: 1fr; }
+      header { align-items: flex-start; }
+      .actions { justify-content: flex-start; }
+    }
+  </style>
 </head>
+
 <body>
-  <h1>Tenant Portal</h1>
+  <div class="wrap">
+    <header>
+      <div class="brand">
+        <div class="logo" aria-hidden="true"></div>
+        <div class="title">
+          <h1>Tenant Portal</h1>
+          <p>Auth0 login + API test harness</p>
+        </div>
+      </div>
 
-  <button id="login">Login</button>
-  <button id="logout">Logout</button>
-  <button id="callApi">Call /api/me</button>
+      <div class="actions">
+        <!-- These IDs are for the simple sample app.js -->
+        <button class="btn btn-primary" id="login" type="button" aria-label="Login">
+          🔐 Login
+        </button>
+        <button class="btn btn-danger" id="logout" type="button" aria-label="Logout">
+          🚪 Logout
+        </button>
+        <button class="btn" id="callApi" type="button" aria-label="Call API endpoint">
+          ⚡ Call /api/me
+        </button>
+      </div>
+    </header>
 
-  <pre id="output"></pre>
+    <main class="grid">
+      <section class="card">
+        <p class="hint">
+          Use <strong>Login</strong> to authenticate with Auth0. Then hit <strong>Call /api/me</strong> to verify the JWT
+          in Cloudflare Pages Functions.
+        </p>
+
+        <div class="statusRow">
+          <span class="pill" id="statusPill">
+            <span class="dot" id="statusDot"></span>
+            <span id="statusText">Status: ready</span>
+          </span>
+
+          <span class="pill">
+            Endpoint: <span style="font-family: var(--mono); color: rgba(255,255,255,0.86);">/api/me</span>
+          </span>
+        </div>
+      </section>
+
+      <section class="card">
+        <p class="hint" style="margin-bottom: 10px;">
+          Output from the API call will appear here.
+        </p>
+        <pre id="output" aria-live="polite">{ "hint": "Click Login, then Call /api/me" }</pre>
+      </section>
+    </main>
+
+    <div class="footer">
+      <span>Tenant → Auth0 → Cloudflare Pages Functions → Salesforce</span>
+      <span>
+        Tip: open DevTools → Network to inspect <code style="font-family: var(--mono);">/api/me</code>
+      </span>
+    </div>
+  </div>
 
   <script src="https://cdn.auth0.com/js/auth0-spa-js/2.0/auth0-spa-js.production.js"></script>
   <script src="app.js"></script>
+
+  <!-- Optional tiny UX enhancement: show some UI status without touching app.js -->
+  <script>
+    // This doesn't do auth; it just makes the UI feel nicer while you wire app.js.
+    (function () {
+      const out = document.getElementById("output");
+      const dot = document.getElementById("statusDot");
+      const text = document.getElementById("statusText");
+
+      const setStatus = (label, mode) => {
+        text.textContent = `Status: ${label}`;
+        dot.style.background =
+          mode === "ok" ? "rgba(124,240,197,0.95)" :
+          mode === "warn" ? "rgba(255, 209, 102, 0.95)" :
+          mode === "bad" ? "rgba(255, 107, 107, 0.95)" :
+          "rgba(255,255,255,0.35)";
+        dot.style.boxShadow =
+          mode === "ok" ? "0 0 0 3px rgba(124,240,197,0.18)" :
+          mode === "warn" ? "0 0 0 3px rgba(255, 209, 102, 0.18)" :
+          mode === "bad" ? "0 0 0 3px rgba(255, 107, 107, 0.18)" :
+          "0 0 0 3px rgba(255,255,255,0.08)";
+      };
+
+      // Improve UX for clicks
+      const bind = (id, action) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener("click", () => {
+          setStatus(action, "warn");
+          if (out) out.textContent = `{"status":"${action} clicked","note":"Actual auth/API logic runs in app.js"}`;
+        });
+      };
+
+      bind("login", "login");
+      bind("logout", "logout");
+      bind("callApi", "calling api");
+
+      setStatus("ready", "ok");
+    })();
+  </script>
 </body>
 </html>
-
-
