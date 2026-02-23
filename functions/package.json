@@ -1,8 +1,0 @@
-{
-  "name": "tenant-portal",
-  "private": true,
-  "version": "1.0.0",
-  "dependencies": {
-    "jose": "^5.2.4"
-  }
-}
