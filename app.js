@@ -132,11 +132,15 @@ function initTabs() {
 // Auth helpers
 // -------------------------
 async function requireAuth0Client() {
-  if (!window.createAuth0Client) {
-    throw new Error("Auth0 SPA SDK not loaded. Add the Auth0 script tag before app.js");
+  // DEBUG (temporary)
+  console.log("Auth0 SDK typeof createAuth0Client =", typeof window.createAuth0Client);
+
+  if (typeof window.createAuth0Client !== "function") {
+    throw new Error("Auth0 SPA SDK not loaded. createAuth0Client is missing.");
   }
+
   if (!auth0Client) {
-    auth0Client = await createAuth0Client({
+    auth0Client = await window.createAuth0Client({
       domain: AUTH0_DOMAIN,
       clientId: AUTH0_CLIENT_ID,
       authorizationParams: {
