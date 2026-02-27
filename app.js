@@ -144,16 +144,17 @@ async function requireAuth0Client() {
   }
 
   if (!auth0Client) {
-    auth0Client = await factory({
-      domain: AUTH0_DOMAIN,
-      clientId: AUTH0_CLIENT_ID,
-      authorizationParams: {
-        audience: AUTH0_AUDIENCE,
-        redirect_uri: PORTAL_ORIGIN,
-      },
-      cacheLocation: "localstorage",
-      useRefreshTokens: true,
-    });
+    auth0Client = await window.auth0.createAuth0Client({
+  domain: AUTH0_DOMAIN,
+  clientId: AUTH0_CLIENT_ID,
+  authorizationParams: {
+    audience: AUTH0_AUDIENCE,
+    redirect_uri: PORTAL_ORIGIN,
+    scope: "openid profile email"
+  },
+  cacheLocation: "memory",
+  useRefreshTokens: false
+});
   }
 
   return auth0Client;
