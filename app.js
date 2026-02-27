@@ -132,15 +132,19 @@ function initTabs() {
 // Auth helpers
 // -------------------------
 async function requireAuth0Client() {
-  // DEBUG (temporary)
-  console.log("Auth0 SDK typeof createAuth0Client =", typeof window.createAuth0Client);
+  const factory =
+    (window.auth0 && typeof window.auth0.createAuth0Client === "function")
+      ? window.auth0.createAuth0Client
+      : null;
 
-  if (typeof window.createAuth0Client !== "function") {
-    throw new Error("Auth0 SPA SDK not loaded. createAuth0Client is missing.");
+  console.log("Auth0 SDK typeof window.auth0.createAuth0Client =", typeof factory);
+
+  if (!factory) {
+    throw new Error("Auth0 SPA SDK not loaded. window.auth0.createAuth0Client is missing.");
   }
 
   if (!auth0Client) {
-    auth0Client = await window.createAuth0Client({
+    auth0Client = await factory({
       domain: AUTH0_DOMAIN,
       clientId: AUTH0_CLIENT_ID,
       authorizationParams: {
@@ -151,6 +155,7 @@ async function requireAuth0Client() {
       useRefreshTokens: true,
     });
   }
+
   return auth0Client;
 }
 
