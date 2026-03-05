@@ -35,15 +35,17 @@ async function sfPost(instanceUrl, accessToken, path, body) {
 export async function onRequestPost({ request, env }) {
   try {
     const token = getBearerToken(request);
-    if (!token) return new Response(JSON.stringify({ ok: false, error: "Missing Bearer token" }), { status: 401 });
+    if (!token) {
+      return new Response(JSON.stringify({ ok: false, error: "Missing Bearer token" }), { status: 401 });
+    }
 
     const payload = await verifyAuth0Jwt(token, env);
     const sub = payload.sub;
 
     const body = await request.json();
-    const subject = body?.subject;
-    const description = body?.description;
-    const photos = body?.photos || [];
+    const subject = (body?.subject || "").trim();
+    const description = (body?.description || "").trim();
+    const photos = Array.isArray(body?.photos) ? body.photos : [];
 
     if (!subject || !description) {
       return new Response(JSON.stringify({ ok: false, error: "Missing subject/description" }), { status: 400 });
@@ -51,14 +53,14 @@ export async function onRequestPost({ request, env }) {
 
     const { access_token, instance_url } = await getSalesforceAccessToken(env);
 
-    // 1) Get tenant context to safely obtain tenancyId
+    // 1) Get tenancyId securely from portal context
     const ctx = await sfPost(instance_url, access_token, "/services/apexrest/portal/context", { sub });
     if (!ctx?.ok || !ctx?.tenancy?.id) {
       return new Response(JSON.stringify({ ok: false, error: "No active tenancy context", ctx }), { status: 403 });
     }
 
-    // 2) Create maintenance via robust V2 endpoint
-    const createResp = await sfPost(instance_url, access_token, "/services/apexrest/portal/maintenance2", {
+    // 2) Create maintenance via V2 endpoint
+    const created = await sfPost(instance_url, access_token, "/services/apexrest/portal/maintenance2", {
       sub,
       tenancyId: ctx.tenancy.id,
       subject,
@@ -66,8 +68,8 @@ export async function onRequestPost({ request, env }) {
       photos,
     });
 
-    const status = createResp?.ok === false ? 500 : 200;
-    return new Response(JSON.stringify(createResp), {
+    const status = created?.ok === false ? 502 : 200;
+    return new Response(JSON.stringify(created), {
       status,
       headers: { "Content-Type": "application/json" },
     });
