@@ -115,17 +115,50 @@ function setTab(name) {
   if (panel) panel.style.display = "block";
 }
 
+function routeNameFromHash() {
+  const h = (window.location.hash || "").replace(/^#\/?/, "");
+  return h || "home";
+}
+
+function setRoute(name) {
+  window.location.hash = `#/${name}`;
+}
+
+async function onRouteChange() {
+  const name = routeNameFromHash();
+
+  // Show correct panel (reuses your existing tab UI)
+  setTab(name);
+
+  // Only load what the page needs
+  if (!(await isAuthenticated())) return;
+
+  // Ensure we have portal context loaded once
+  if (!portalContext) {
+    await loadMe();
+  }
+
+  if (name === "maintenance") {
+    await loadMaintenance();
+  } else if (name === "docs") {
+    await loadDocs();
+  } else {
+    // home - nothing extra required, but you can render a dashboard here
+  }
+}
+
 function initTabs() {
   const tabs = Array.from(document.querySelectorAll(".tab"));
   if (!tabs.length) return;
 
-  tabs.forEach((btn) => {
-    btn.addEventListener("click", () => setTab(btn.dataset.tab));
-  });
+tabs.forEach((btn) => {
+  btn.addEventListener("click", () => setRoute(btn.dataset.tab));
+});
 
-  // Default to first tab if no panel is shown
-  const first = tabs[0]?.dataset?.tab;
-  if (first) setTab(first);
+// If no hash, default to first tab (usually "home")
+if (!window.location.hash) {
+  const first = tabs[0]?.dataset?.tab || "home";
+  setRoute(first);
 }
 
 // -------------------------
@@ -235,19 +268,92 @@ async function api(path, opts = {}) {
 // -------------------------
 // Loaders
 // -------------------------
+let portalContext = null; // cache of /api/me
+
 async function loadMe() {
   setStatus("Loading profile…", "warn");
   const me = await api("/api/me");
+  portalContext = me; // cache
 
-  // Until Salesforce mapping is wired, /api/me returns Auth0-ish data. Show something sensible either way.
-  const headline =
-    me.unitName
-      ? `${me.unitName} • Lease ${me.leaseStart || "?"} → ${me.leaseEnd || "?"}`
-      : (me.email ? `Logged in as ${me.email}` : (me.sub ? `Logged in (${me.sub})` : "Logged in"));
+  const ctx = me?.sf && me.sf.ok !== false ? me.sf : null;
+
+  const tenantName = ctx?.tenant?.name;
+  const unitName = ctx?.unit?.name;
+  const propName = ctx?.unit?.propertyName;
+  const leaseStart = ctx?.lease?.startDate;
+  const leaseEnd = ctx?.lease?.endDate;
+  const tenancyStatus = ctx?.tenancy?.status;
+
+  const headline = ctx
+    ? `${propName || "Property"} • ${unitName || "Unit"} • ${tenancyStatus || "Tenancy"}`
+    : (me.sub ? `Logged in (${me.sub})` : "Logged in");
 
   setText("unitLine", headline);
-  setText("profileBox", JSON.stringify(me, null, 2));
+
+  // Nice human summary (optional)
+  const summary = ctx ? {
+    tenant: tenantName,
+    unit: unitName,
+    property: propName,
+    lease: { start: leaseStart, end: leaseEnd, status: ctx?.lease?.status },
+    tenancy: { start: ctx?.tenancy?.startDate, end: ctx?.tenancy?.endDate, status: tenancyStatus }
+  } : me;
+
+  setText("profileBox", JSON.stringify(summary, null, 2));
   setStatus("Profile loaded", "ok");
+
+  return me;
+}
+
+function renderHome() {
+  const el = $("homeCards");
+  if (!el) return;
+
+  const ctx = portalContext?.sf?.ok !== false ? portalContext.sf : null;
+
+  if (!ctx) {
+    el.innerHTML = `
+      <div class="item">
+        <p class="itemTitle">Welcome</p>
+        <p class="itemMeta">We couldn’t find an active tenancy for your account yet.</p>
+      </div>
+    `;
+    return;
+  }
+
+  const tenantName = ctx.tenant?.name || "Tenant";
+  const tenantEmail = ctx.tenant?.email || "";
+  const propertyName = ctx.unit?.propertyName || "Property";
+  const unitName = ctx.unit?.name || "Unit";
+  const tenancyStatus = ctx.tenancy?.status || "";
+  const leaseName = ctx.lease?.name || "Lease";
+  const leaseStart = ctx.lease?.startDate || "?";
+  const leaseEnd = ctx.lease?.endDate || "?";
+
+  el.innerHTML = `
+    <div class="item">
+      <p class="itemTitle">Welcome, ${escapeHtml(tenantName)}</p>
+      <p class="itemMeta">${escapeHtml(tenantEmail)}</p>
+    </div>
+
+    <div class="item">
+      <p class="itemTitle">${escapeHtml(propertyName)}</p>
+      <p class="itemMeta">Unit: ${escapeHtml(unitName)}</p>
+      <p class="itemMeta">Tenancy: ${escapeHtml(tenancyStatus)}</p>
+    </div>
+
+    <div class="item">
+      <p class="itemTitle">${escapeHtml(leaseName)}</p>
+      <p class="itemMeta">${escapeHtml(leaseStart)} → ${escapeHtml(leaseEnd)}</p>
+      <p class="itemMeta">Lease status: ${escapeHtml(ctx.lease?.status || "")}</p>
+    </div>
+
+    <div class="item">
+      <p class="itemTitle">Quick actions</p>
+      <p class="itemMeta"><a href="#/maintenance">Submit a maintenance request</a></p>
+      <p class="itemMeta"><a href="#/docs">View documents</a></p>
+    </div>
+  `;
 }
 
 async function loadMaintenance() {
@@ -255,27 +361,39 @@ async function loadMaintenance() {
   if (!wrap) return;
 
   setStatus("Loading maintenance…", "warn");
-  const items = await api("/api/maintenance");
   wrap.innerHTML = "";
 
-  if (!Array.isArray(items) || !items.length) {
-    wrap.innerHTML = `<div class="item"><p class="itemMeta">No requests yet.</p></div>`;
+  try {
+    // Expecting GET /api/maintenance to return an array
+    const items = await api("/api/maintenance");
+
+    if (!Array.isArray(items) || !items.length) {
+      wrap.innerHTML = `<div class="item"><p class="itemMeta">No requests yet.</p></div>`;
+      setStatus("Maintenance loaded", "ok");
+      return;
+    }
+
+    items.forEach((i) => {
+      const el = document.createElement("div");
+      el.className = "item";
+      el.innerHTML = `
+        <p class="itemTitle">${escapeHtml(i.subject || "(No subject)")}</p>
+        <p class="itemMeta">${escapeHtml(i.status || "")} • ${escapeHtml(safeDate(i.createdDate))}</p>
+        <p class="itemMeta">${escapeHtml(i.description || "")}</p>
+      `;
+      wrap.appendChild(el);
+    });
+
     setStatus("Maintenance loaded", "ok");
-    return;
-  }
-
-  items.forEach((i) => {
-    const el = document.createElement("div");
-    el.className = "item";
-    el.innerHTML = `
-      <p class="itemTitle">${escapeHtml(i.subject || "(No subject)")}</p>
-      <p class="itemMeta">${escapeHtml(i.status || "")} • ${escapeHtml(safeDate(i.createdDate))}</p>
-      <p class="itemMeta">${escapeHtml(i.description || "")}</p>
+  } catch (e) {
+    console.error("Maintenance list unavailable:", e);
+    wrap.innerHTML = `
+      <div class="item">
+        <p class="itemMeta">Maintenance list isn’t available yet (but you can still submit a request).</p>
+      </div>
     `;
-    wrap.appendChild(el);
-  });
-
-  setStatus("Maintenance loaded", "ok");
+    setStatus("Maintenance loaded", "warn");
+  }
 }
 
 async function loadDocs() {
@@ -283,30 +401,40 @@ async function loadDocs() {
   if (!wrap) return;
 
   setStatus("Loading documents…", "warn");
-  const docs = await api("/api/docs");
   wrap.innerHTML = "";
 
-  if (!Array.isArray(docs) || !docs.length) {
-    wrap.innerHTML = `<div class="item"><p class="itemMeta">No documents linked to this unit.</p></div>`;
+  try {
+    const docs = await api("/api/docs");
+
+    if (!Array.isArray(docs) || !docs.length) {
+      wrap.innerHTML = `<div class="item"><p class="itemMeta">No documents linked to this unit.</p></div>`;
+      setStatus("Documents loaded", "ok");
+      return;
+    }
+
+    docs.forEach((d) => {
+      const el = document.createElement("div");
+      el.className = "item";
+      const url = `/api/docs/download?contentDocumentId=${encodeURIComponent(d.contentDocumentId)}`;
+      el.innerHTML = `
+        <p class="itemTitle">${escapeHtml(d.title || "Document")}</p>
+        <p class="itemMeta">${escapeHtml(d.fileType || "")} • ${escapeHtml(safeDate(d.lastModified))}</p>
+        <a href="${url}">Download</a>
+      `;
+      wrap.appendChild(el);
+    });
+
     setStatus("Documents loaded", "ok");
-    return;
-  }
-
-  docs.forEach((d) => {
-    const el = document.createElement("div");
-    el.className = "item";
-    const url = `/api/docs/download?contentDocumentId=${encodeURIComponent(d.contentDocumentId)}`;
-    el.innerHTML = `
-      <p class="itemTitle">${escapeHtml(d.title || "Document")}</p>
-      <p class="itemMeta">${escapeHtml(d.fileType || "")} • ${escapeHtml(safeDate(d.lastModified))}</p>
-      <a href="${url}">Download</a>
+  } catch (e) {
+    console.error("Docs list unavailable:", e);
+    wrap.innerHTML = `
+      <div class="item">
+        <p class="itemMeta">Documents aren’t available yet.</p>
+      </div>
     `;
-    wrap.appendChild(el);
-  });
-
-  setStatus("Documents loaded", "ok");
+    setStatus("Documents loaded", "warn");
+  }
 }
-
 // -------------------------
 // Maintenance submit (optional)
 // -------------------------
@@ -404,8 +532,9 @@ async function renderLoggedInState() {
   }
 
   // Load what exists (each loader is safe if its UI container doesn't exist)
-  await loadMe();
-  await Promise.allSettled([loadMaintenance(), loadDocs()]);
+portalContext = null;
+await loadMe();
+await onRouteChange(); // loads only what the current route needs
 }
 
 // -------------------------
@@ -416,6 +545,11 @@ async function boot() {
   isBooted = true;
 
   initTabs();
+  
+  window.addEventListener("hashchange", () => {
+  onRouteChange().catch(console.error);
+});
+  
   initMaintenanceForm();
   initAuthButtons();
 
