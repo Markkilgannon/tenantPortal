@@ -89,3 +89,42 @@ export async function onRequestPost({ request, env }) {
     });
   }
 }
+
+export async function onRequestGet({ request, env }) {
+  try {
+    const token = getBearerToken(request);
+    if (!token) return new Response(JSON.stringify({ ok: false, error: "Missing Bearer token" }), { status: 401 });
+
+    const payload = await verifyAuth0Jwt(token, env);
+    const sub = payload.sub;
+
+    const { access_token, instance_url } = await getSalesforceAccessToken(env);
+
+    const resp = await fetch(
+      `${instance_url}/services/apexrest/portal/maintenance?sub=${encodeURIComponent(sub)}`,
+      { headers: { Authorization: `Bearer ${access_token}` } }
+    );
+
+    const ct = resp.headers.get("content-type") || "";
+    const text = await resp.text();
+    const data = ct.includes("application/json") ? JSON.parse(text || "[]") : [];
+
+    if (!resp.ok) {
+      return new Response(JSON.stringify({ ok: false, sfStatus: resp.status, sfBody: data || text }), {
+        status: 502,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    return new Response(JSON.stringify(data), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+
+  } catch (e) {
+    return new Response(JSON.stringify({ ok: false, error: "Server error", details: String(e?.message || e) }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+}
