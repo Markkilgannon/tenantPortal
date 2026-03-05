@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Tenant Portal</title>
-  <meta name="description" content="Tenant Portal login and API test" />
+  <meta name="description" content="Tenant Portal" />
 
   <style>
     :root {
@@ -73,20 +73,9 @@
       flex: 0 0 auto;
     }
 
-    .title {
-      display: grid;
-      gap: 2px;
-    }
-    .title h1 {
-      font-size: 16px;
-      margin: 0;
-      letter-spacing: 0.2px;
-    }
-    .title p {
-      margin: 0;
-      font-size: 12px;
-      color: var(--muted);
-    }
+    .title { display: grid; gap: 2px; }
+    .title h1 { font-size: 16px; margin: 0; letter-spacing: 0.2px; }
+    .title p { margin: 0; font-size: 12px; color: var(--muted); }
 
     .actions {
       display: flex;
@@ -117,18 +106,12 @@
       border-color: rgba(255,255,255,0.20);
     }
     .btn:active { transform: translateY(1px); }
-    .btn:disabled {
-      opacity: 0.55;
-      cursor: not-allowed;
-    }
+    .btn:disabled { opacity: 0.55; cursor: not-allowed; }
 
     .btn-primary {
       background: linear-gradient(135deg, rgba(110,168,255,0.95), rgba(124,240,197,0.65));
       border-color: transparent;
       color: #06101f;
-    }
-    .btn-primary:hover {
-      filter: brightness(1.03);
     }
 
     .btn-danger {
@@ -136,11 +119,7 @@
       background: rgba(255, 107, 107, 0.10);
     }
 
-    main {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 14px;
-    }
+    main { display: grid; gap: 14px; }
 
     .card {
       padding: 16px 18px;
@@ -195,6 +174,61 @@
       box-shadow: 0 0 0 3px rgba(255,255,255,0.08);
     }
 
+    .nav {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .tabBtn {
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.06);
+      color: var(--text);
+      padding: 8px 10px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 12px;
+    }
+    .tabBtn.active {
+      background: rgba(110,168,255,0.18);
+      border-color: rgba(110,168,255,0.40);
+    }
+
+    .homeGrid {
+      display: grid;
+      gap: 12px;
+      grid-template-columns: 1fr;
+      margin-top: 14px;
+    }
+    @media (min-width: 860px) {
+      .homeGrid { grid-template-columns: 1fr 1fr; }
+    }
+
+    .panel { display: none; }
+    .panel.active { display: block; }
+
+    .itemCard {
+      padding: 14px;
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 14px;
+      background: rgba(255,255,255,0.04);
+    }
+    .itemTitle {
+      margin: 0 0 6px 0;
+      font-weight: 800;
+      letter-spacing: 0.2px;
+      font-size: 14px;
+    }
+    .itemMeta {
+      margin: 0;
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+    .itemMeta + .itemMeta { margin-top: 6px; }
+
     pre {
       margin: 0;
       padding: 14px;
@@ -209,6 +243,27 @@
       max-height: 420px;
     }
 
+    input, textarea {
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.04);
+      color: var(--text);
+      padding: 10px 12px;
+      outline: none;
+      font-family: var(--sans);
+      font-size: 14px;
+    }
+    textarea { min-height: 110px; resize: vertical; }
+
+    label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin: 10px 0 6px;
+      font-weight: 700;
+    }
+
     .footer {
       display: flex;
       justify-content: space-between;
@@ -218,8 +273,6 @@
       padding: 0 2px;
       flex-wrap: wrap;
     }
-    .footer a { color: rgba(110,168,255,0.9); text-decoration: none; }
-    .footer a:hover { text-decoration: underline; }
 
     @media (max-width: 860px) {
       .grid { grid-template-columns: 1fr; }
@@ -236,100 +289,106 @@
         <div class="logo" aria-hidden="true"></div>
         <div class="title">
           <h1>Tenant Portal</h1>
-          <p>Auth0 login + API test harness</p>
+          <p>Secure access to your unit, lease, documents & maintenance</p>
         </div>
       </div>
 
       <div class="actions">
-        <!-- These IDs are for the simple sample app.js -->
-        <button class="btn btn-primary" id="btnLogin" type="button" aria-label="Login">
-          🔐 Login
-        </button>
-        <button class="btn btn-danger" id="btnLogout" type="button" aria-label="Logout">
-          🚪 Logout
-        </button>
-        <button class="btn" id="callApi" type="callApi" aria-label="Call API endpoint">
-          ⚡ Call /api/me
-        </button>
+        <button class="btn btn-primary" id="btnLogin" type="button">🔐 Login</button>
+        <button class="btn btn-danger" id="btnLogout" type="button">🚪 Logout</button>
+        <button class="btn" id="callApi" type="button">⚡ Call /api/me</button>
       </div>
     </header>
 
     <main class="grid">
+      <!-- LEFT: Portal -->
       <section class="card">
         <p class="hint">
-          Use <strong>Login</strong> to authenticate with Auth0. Then hit <strong>Call /api/me</strong> to verify the JWT
-          in Cloudflare Pages Functions.
+          After you login, your dashboard will show your property, unit and lease information.
         </p>
 
         <div class="statusRow">
-          <span class="pill" id="statusPill">
+          <span class="pill">
             <span class="dot" id="statusDot"></span>
             <span id="statusText">Status: ready</span>
           </span>
 
           <span class="pill">
-            Endpoint: <span style="font-family: var(--mono); color: rgba(255,255,255,0.86);">/api/me</span>
+            <span id="unitLine" style="font-family: var(--mono); color: rgba(255,255,255,0.86);">
+              Please log in to view your unit.
+            </span>
           </span>
+        </div>
+
+        <!-- NAV -->
+        <div class="nav" id="navBar" style="display:none;">
+          <button class="tabBtn" data-panel="home" type="button">Home</button>
+          <button class="tabBtn" data-panel="maintenance" type="button">Maintenance</button>
+          <button class="tabBtn" data-panel="docs" type="button">Documents</button>
+        </div>
+
+        <!-- PANELS -->
+        <div id="panel-home" class="panel active">
+          <div id="homeCards" class="homeGrid" style="margin-top:14px;">
+            <div class="itemCard">
+              <p class="itemTitle">Welcome</p>
+              <p class="itemMeta">Login to see your unit and lease details.</p>
+            </div>
+          </div>
+        </div>
+
+        <div id="panel-maintenance" class="panel">
+          <div class="itemCard" style="margin-top:14px;">
+            <p class="itemTitle">Submit a maintenance request</p>
+            <p class="itemMeta">Describe the issue and add photos if needed.</p>
+
+            <form id="maintenanceForm" style="margin-top: 10px;">
+              <label for="subject">Subject</label>
+              <input id="subject" name="subject" placeholder="e.g. Heating not working" />
+
+              <label for="description">Description</label>
+              <textarea id="description" name="description" placeholder="Give as much detail as possible…"></textarea>
+
+              <label for="photos">Photos (optional)</label>
+              <input id="photos" name="photos" type="file" multiple accept="image/*" />
+
+              <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
+                <button class="btn btn-primary" type="submit">Submit request</button>
+              </div>
+
+              <p class="itemMeta" id="maintenanceMsg" style="margin-top:10px;"></p>
+            </form>
+          </div>
+
+          <div id="maintenanceList" style="margin-top:12px; display:grid; gap:12px;"></div>
+        </div>
+
+        <div id="panel-docs" class="panel">
+          <div class="itemCard" style="margin-top:14px;">
+            <p class="itemTitle">Documents</p>
+            <p class="itemMeta">Leases, manuals and property documents available to you.</p>
+          </div>
+
+          <div id="docsList" style="margin-top:12px; display:grid; gap:12px;"></div>
         </div>
       </section>
 
+      <!-- RIGHT: Debug output -->
       <section class="card">
         <p class="hint" style="margin-bottom: 10px;">
-          Output from the API call will appear here.
+          Debug output (useful while wiring endpoints).
         </p>
-        <pre id="output" aria-live="polite">{ "hint": "Click Login, then Call /api/me" }</pre>
+        <pre id="output" aria-live="polite">{ "hint": "Login to load your dashboard" }</pre>
       </section>
     </main>
 
     <div class="footer">
       <span>Tenant → Auth0 → Cloudflare Pages Functions → Salesforce</span>
-      <span>
-        Tip: open DevTools → Network to inspect <code style="font-family: var(--mono);">/api/me</code>
-      </span>
+      <span>Tip: DevTools → Network to inspect API calls</span>
     </div>
   </div>
 
-  <!-- Optional tiny UX enhancement: show some UI status without touching app.js -->
- <!-- <script>
-    // This doesn't do auth; it just makes the UI feel nicer while you wire app.js.
-    (function () {
-      const out = document.getElementById("output");
-      const dot = document.getElementById("statusDot");
-      const text = document.getElementById("statusText");
-
-      const setStatus = (label, mode) => {
-        text.textContent = `Status: ${label}`;
-        dot.style.background =
-          mode === "ok" ? "rgba(124,240,197,0.95)" :
-          mode === "warn" ? "rgba(255, 209, 102, 0.95)" :
-          mode === "bad" ? "rgba(255, 107, 107, 0.95)" :
-          "rgba(255,255,255,0.35)";
-        dot.style.boxShadow =
-          mode === "ok" ? "0 0 0 3px rgba(124,240,197,0.18)" :
-          mode === "warn" ? "0 0 0 3px rgba(255, 209, 102, 0.18)" :
-          mode === "bad" ? "0 0 0 3px rgba(255, 107, 107, 0.18)" :
-          "0 0 0 3px rgba(255,255,255,0.08)";
-      };
-
-      // Improve UX for clicks
-      const bind = (id, action) => {
-        const el = document.getElementById(id);
-        if (!el) return;
-        el.addEventListener("click", () => {
-          setStatus(action, "warn");
-          if (out) out.textContent = `{"status":"${action} clicked","note":"Actual auth/API logic runs in app.js"}`;
-        });
-      };
-
-      bind("login", "login");
-      bind("logout", "logout");
-      bind("callApi", "calling api");
-
-      setStatus("ready", "ok");
-    })();
-  </script> -->
-
-<script src="/vendor/auth0-spa-js.production.js"></script>
-<script src="/app.js"></script>
+  <script src="/vendor/auth0-spa-js.production.js"></script>
+  <script src="/app.js"></script>
 </body>
 </html>
