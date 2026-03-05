@@ -25,11 +25,19 @@ async function sfPost(instanceUrl, accessToken, path, body) {
     body: JSON.stringify(body),
   });
 
-  const json = await resp.json().catch(() => ({}));
+  const ct = resp.headers.get("content-type") || "";
+  const text = await resp.text();
+  const parsed = ct.includes("application/json") ? (JSON.parse(text || "{}")) : null;
+
   if (!resp.ok) {
-    return { ok: false, sfStatus: resp.status, sfBody: json };
+    return {
+      ok: false,
+      sfStatus: resp.status,
+      sfContentType: ct,
+      sfBody: parsed ?? text,   // <-- this is the key
+    };
   }
-  return json;
+  return parsed ?? { ok: true, raw: text };
 }
 
 export async function onRequestPost({ request, env }) {
