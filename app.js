@@ -2,17 +2,7 @@
  * Tenant Portal (Cloudflare Pages)
  * - Auth0 SPA login (Auth0 SPA SDK v2)
  * - Calls Pages Functions (/api/*) with Bearer token
- * - Renders: Profile (/api/me), Maintenance (/api/maintenance), Docs (/api/docs)
- *
- * Requirements in your HTML:
- *  - Buttons: #btnLogin, #btnLogout (optional: will gracefully no-op if missing)
- *  - Tabs (optional): .tab[data-tab="..."] and panels: .tabPanel + #tab-<name>
- *  - UI targets (optional):
- *      #unitLine, #profileBox, #maintenanceList, #docsList, #maintenanceMsg
- *  - Maintenance form (optional):
- *      #maintenanceForm with fields #subject #description #photos
- *
- * NOTE: This file is defensive: if a given element isn't present, it won't crash.
+ * - Renders: Home dashboard, Maintenance, Docs
  */
 
 // -------------------------
@@ -31,10 +21,10 @@ const setHtml = (id, html) => {
   if (el) el.innerHTML = html;
 };
 
-const show = (id, yes) => {
+const show = (id, yes, displayStyle = "inline-block") => {
   const el = $(id);
   if (!el) return;
-  el.style.display = yes ? "inline-block" : "none";
+  el.style.display = yes ? displayStyle : "none";
 };
 
 const on = (id, evt, fn, opts) => {
@@ -60,11 +50,14 @@ const PORTAL_ORIGIN = window.location.origin;
 let auth0Client = null;
 let isBooted = false;
 
+// Cache of /api/me response (includes Salesforce context)
+let portalContext = null;
+
 // -------------------------
 // Utilities
 // -------------------------
 function escapeHtml(s) {
-  return String(s).replace(/[&<>"']/g, (c) => ({
+  return String(s ?? "").replace(/[&<>"']/g, (c) => ({
     "&": "&amp;",
     "<": "&lt;",
     ">": "&gt;",
@@ -85,9 +78,7 @@ function safeDate(d) {
 }
 
 function setStatus(message, kind = "info") {
-  // Optional: hook these up in your HTML if you want
-  // - #statusText, #statusDot
-  setText("statusText", message);
+  setText("statusText", `Status: ${message}`);
 
   const dot = $("statusDot");
   if (!dot) return;
@@ -102,63 +93,41 @@ function setStatus(message, kind = "info") {
 }
 
 // -------------------------
-// Tabs (optional)
+// Simple panels (Home/Maintenance/Docs)
 // -------------------------
-function setTab(name) {
-  document.querySelectorAll(".tab").forEach((t) => {
-    t.classList.toggle("active", t.dataset.tab === name);
+function setPanel(name) {
+  document.querySelectorAll(".panel").forEach((p) => p.classList.remove("active"));
+  const panel = $(`panel-${name}`);
+  if (panel) panel.classList.add("active");
+
+  document.querySelectorAll(".tabBtn").forEach((b) => {
+    b.classList.toggle("active", b.dataset.panel === name);
   });
-  document.querySelectorAll(".tabPanel").forEach((p) => {
-    p.style.display = "none";
+}
+
+function initNav() {
+  const nav = $("navBar");
+  if (!nav) return;
+
+  nav.addEventListener("click", async (e) => {
+    const btn = e.target.closest(".tabBtn");
+    if (!btn) return;
+
+    const panel = btn.dataset.panel;
+    if (!panel) return;
+
+    setPanel(panel);
+
+    // Lazy-load data for panels
+    if (panel === "maintenance") {
+      await loadMaintenance().catch(console.error);
+    } else if (panel === "docs") {
+      await loadDocs().catch(console.error);
+    }
   });
-  const panel = $(`tab-${name}`);
-  if (panel) panel.style.display = "block";
-}
 
-function routeNameFromHash() {
-  const h = (window.location.hash || "").replace(/^#\/?/, "");
-  return h || "home";
-}
-
-function setRoute(name) {
-  window.location.hash = `#/${name}`;
-}
-
-async function onRouteChange() {
-  const name = routeNameFromHash();
-
-  // Show correct panel (reuses your existing tab UI)
-  setTab(name);
-
-  // Only load what the page needs
-  if (!(await isAuthenticated())) return;
-
-  // Ensure we have portal context loaded once
-  if (!portalContext) {
-    await loadMe();
-  }
-
-  if (name === "maintenance") {
-    await loadMaintenance();
-  } else if (name === "docs") {
-    await loadDocs();
-  } else {
-    // home - nothing extra required, but you can render a dashboard here
-  }
-}
-
-function initTabs() {
-  const tabs = Array.from(document.querySelectorAll(".tab"));
-  if (!tabs.length) return;
-
-tabs.forEach((btn) => {
-  btn.addEventListener("click", () => setRoute(btn.dataset.tab));
-});
-
-// If no hash, default to first tab (usually "home")
-if (!window.location.hash) {
-  const first = tabs[0]?.dataset?.tab || "home";
-  setRoute(first);
+  // Default
+  setPanel("home");
 }
 
 // -------------------------
@@ -170,24 +139,22 @@ async function requireAuth0Client() {
       ? window.auth0.createAuth0Client
       : null;
 
-  console.log("Auth0 SDK typeof window.auth0.createAuth0Client =", typeof factory);
-
   if (!factory) {
     throw new Error("Auth0 SPA SDK not loaded. window.auth0.createAuth0Client is missing.");
   }
 
   if (!auth0Client) {
     auth0Client = await window.auth0.createAuth0Client({
-  domain: AUTH0_DOMAIN,
-  clientId: AUTH0_CLIENT_ID,
-  authorizationParams: {
-    audience: AUTH0_AUDIENCE,
-    redirect_uri: PORTAL_ORIGIN,
-    scope: "openid profile email"
-  },
-  cacheLocation: "memory",
-  useRefreshTokens: false
-});
+      domain: AUTH0_DOMAIN,
+      clientId: AUTH0_CLIENT_ID,
+      authorizationParams: {
+        audience: AUTH0_AUDIENCE,
+        redirect_uri: PORTAL_ORIGIN,
+        scope: "openid profile email"
+      },
+      cacheLocation: "memory",
+      useRefreshTokens: false
+    });
   }
 
   return auth0Client;
@@ -198,7 +165,6 @@ async function handleAuthRedirectIfPresent() {
   if (query.includes("code=") && query.includes("state=")) {
     setStatus("Completing login…", "warn");
     await auth0Client.handleRedirectCallback();
-    // Clean URL (remove code/state)
     window.history.replaceState({}, document.title, PORTAL_ORIGIN + window.location.pathname);
   }
 }
@@ -230,7 +196,6 @@ async function isAuthenticated() {
 
 async function getAccessToken() {
   await requireAuth0Client();
-  // Uses SPA SDK cache + refresh tokens automatically
   return await auth0Client.getTokenSilently({
     authorizationParams: {
       audience: AUTH0_AUDIENCE,
@@ -257,6 +222,7 @@ async function api(path, opts = {}) {
 
   if (!res.ok) {
     const msg =
+      (data && data.details) ? data.details :
       (data && data.message) ? data.message :
       (data && data.error) ? data.error :
       (typeof data === "string" ? data : `HTTP ${res.status}`);
@@ -266,45 +232,8 @@ async function api(path, opts = {}) {
 }
 
 // -------------------------
-// Loaders
+// Home dashboard renderer
 // -------------------------
-let portalContext = null; // cache of /api/me
-
-async function loadMe() {
-  setStatus("Loading profile…", "warn");
-  const me = await api("/api/me");
-  portalContext = me; // cache
-
-  const ctx = me?.sf && me.sf.ok !== false ? me.sf : null;
-
-  const tenantName = ctx?.tenant?.name;
-  const unitName = ctx?.unit?.name;
-  const propName = ctx?.unit?.propertyName;
-  const leaseStart = ctx?.lease?.startDate;
-  const leaseEnd = ctx?.lease?.endDate;
-  const tenancyStatus = ctx?.tenancy?.status;
-
-  const headline = ctx
-    ? `${propName || "Property"} • ${unitName || "Unit"} • ${tenancyStatus || "Tenancy"}`
-    : (me.sub ? `Logged in (${me.sub})` : "Logged in");
-
-  setText("unitLine", headline);
-
-  // Nice human summary (optional)
-  const summary = ctx ? {
-    tenant: tenantName,
-    unit: unitName,
-    property: propName,
-    lease: { start: leaseStart, end: leaseEnd, status: ctx?.lease?.status },
-    tenancy: { start: ctx?.tenancy?.startDate, end: ctx?.tenancy?.endDate, status: tenancyStatus }
-  } : me;
-
-  setText("profileBox", JSON.stringify(summary, null, 2));
-  setStatus("Profile loaded", "ok");
-
-  return me;
-}
-
 function renderHome() {
   const el = $("homeCards");
   if (!el) return;
@@ -313,47 +242,67 @@ function renderHome() {
 
   if (!ctx) {
     el.innerHTML = `
-      <div class="item">
+      <div class="itemCard">
         <p class="itemTitle">Welcome</p>
-        <p class="itemMeta">We couldn’t find an active tenancy for your account yet.</p>
+        <p class="itemMeta">Login to see your unit and lease details.</p>
       </div>
     `;
     return;
   }
 
-  const tenantName = ctx.tenant?.name || "Tenant";
-  const tenantEmail = ctx.tenant?.email || "";
-  const propertyName = ctx.unit?.propertyName || "Property";
-  const unitName = ctx.unit?.name || "Unit";
-  const tenancyStatus = ctx.tenancy?.status || "";
-  const leaseName = ctx.lease?.name || "Lease";
-  const leaseStart = ctx.lease?.startDate || "?";
-  const leaseEnd = ctx.lease?.endDate || "?";
+  const tenant = ctx.tenant || {};
+  const unit = ctx.unit || {};
+  const lease = ctx.lease || {};
+  const tenancy = ctx.tenancy || {};
 
   el.innerHTML = `
-    <div class="item">
-      <p class="itemTitle">Welcome, ${escapeHtml(tenantName)}</p>
-      <p class="itemMeta">${escapeHtml(tenantEmail)}</p>
+    <div class="itemCard">
+      <p class="itemTitle">Welcome, ${escapeHtml(tenant.name || "Tenant")}</p>
+      <p class="itemMeta">${escapeHtml(tenant.email || "")}</p>
+      <p class="itemMeta">${escapeHtml(tenant.phone || "")}</p>
     </div>
 
-    <div class="item">
-      <p class="itemTitle">${escapeHtml(propertyName)}</p>
-      <p class="itemMeta">Unit: ${escapeHtml(unitName)}</p>
-      <p class="itemMeta">Tenancy: ${escapeHtml(tenancyStatus)}</p>
+    <div class="itemCard">
+      <p class="itemTitle">${escapeHtml(unit.propertyName || "Property")}</p>
+      <p class="itemMeta">Unit: ${escapeHtml(unit.name || "")}</p>
+      <p class="itemMeta">Tenancy: ${escapeHtml(tenancy.status || "")}</p>
     </div>
 
-    <div class="item">
-      <p class="itemTitle">${escapeHtml(leaseName)}</p>
-      <p class="itemMeta">${escapeHtml(leaseStart)} → ${escapeHtml(leaseEnd)}</p>
-      <p class="itemMeta">Lease status: ${escapeHtml(ctx.lease?.status || "")}</p>
+    <div class="itemCard">
+      <p class="itemTitle">Lease ${escapeHtml(lease.name || "")}</p>
+      <p class="itemMeta">${escapeHtml(lease.startDate || "?")} → ${escapeHtml(lease.endDate || "?")}</p>
+      <p class="itemMeta">Status: ${escapeHtml(lease.status || "")}</p>
     </div>
 
-    <div class="item">
+    <div class="itemCard">
       <p class="itemTitle">Quick actions</p>
-      <p class="itemMeta"><a href="#/maintenance">Submit a maintenance request</a></p>
-      <p class="itemMeta"><a href="#/docs">View documents</a></p>
+      <p class="itemMeta">Use the navigation above to submit maintenance or view documents.</p>
     </div>
   `;
+}
+
+// -------------------------
+// Loaders
+// -------------------------
+async function loadMe() {
+  setStatus("Loading dashboard…", "warn");
+  const me = await api("/api/me");
+  portalContext = me;
+
+  // Update unit line headline
+  const ctx = me?.sf?.ok !== false ? me.sf : null;
+  const headline = ctx
+    ? `${ctx.unit?.propertyName || "Property"} • ${ctx.unit?.name || "Unit"}`
+    : (me.sub ? `Logged in (${me.sub})` : "Logged in");
+
+  setText("unitLine", headline);
+
+  // Render dashboard cards
+  renderHome();
+
+  // Debug output
+  setText("output", JSON.stringify(me, null, 2));
+  setStatus("Ready", "ok");
 }
 
 async function loadMaintenance() {
@@ -364,18 +313,16 @@ async function loadMaintenance() {
   wrap.innerHTML = "";
 
   try {
-    // Expecting GET /api/maintenance to return an array
-    const items = await api("/api/maintenance");
-
+    const items = await api("/api/maintenance"); // optional list
     if (!Array.isArray(items) || !items.length) {
-      wrap.innerHTML = `<div class="item"><p class="itemMeta">No requests yet.</p></div>`;
-      setStatus("Maintenance loaded", "ok");
+      wrap.innerHTML = `<div class="itemCard"><p class="itemMeta">No requests yet.</p></div>`;
+      setStatus("Maintenance ready", "ok");
       return;
     }
 
     items.forEach((i) => {
       const el = document.createElement("div");
-      el.className = "item";
+      el.className = "itemCard";
       el.innerHTML = `
         <p class="itemTitle">${escapeHtml(i.subject || "(No subject)")}</p>
         <p class="itemMeta">${escapeHtml(i.status || "")} • ${escapeHtml(safeDate(i.createdDate))}</p>
@@ -384,15 +331,11 @@ async function loadMaintenance() {
       wrap.appendChild(el);
     });
 
-    setStatus("Maintenance loaded", "ok");
+    setStatus("Maintenance ready", "ok");
   } catch (e) {
     console.error("Maintenance list unavailable:", e);
-    wrap.innerHTML = `
-      <div class="item">
-        <p class="itemMeta">Maintenance list isn’t available yet (but you can still submit a request).</p>
-      </div>
-    `;
-    setStatus("Maintenance loaded", "warn");
+    wrap.innerHTML = `<div class="itemCard"><p class="itemMeta">Maintenance list isn’t available yet.</p></div>`;
+    setStatus("Maintenance ready", "warn");
   }
 }
 
@@ -405,38 +348,34 @@ async function loadDocs() {
 
   try {
     const docs = await api("/api/docs");
-
     if (!Array.isArray(docs) || !docs.length) {
-      wrap.innerHTML = `<div class="item"><p class="itemMeta">No documents linked to this unit.</p></div>`;
-      setStatus("Documents loaded", "ok");
+      wrap.innerHTML = `<div class="itemCard"><p class="itemMeta">No documents linked to this unit.</p></div>`;
+      setStatus("Documents ready", "ok");
       return;
     }
 
     docs.forEach((d) => {
       const el = document.createElement("div");
-      el.className = "item";
+      el.className = "itemCard";
       const url = `/api/docs/download?contentDocumentId=${encodeURIComponent(d.contentDocumentId)}`;
       el.innerHTML = `
         <p class="itemTitle">${escapeHtml(d.title || "Document")}</p>
         <p class="itemMeta">${escapeHtml(d.fileType || "")} • ${escapeHtml(safeDate(d.lastModified))}</p>
-        <a href="${url}">Download</a>
+        <p class="itemMeta"><a href="${url}">Download</a></p>
       `;
       wrap.appendChild(el);
     });
 
-    setStatus("Documents loaded", "ok");
+    setStatus("Documents ready", "ok");
   } catch (e) {
-    console.error("Docs list unavailable:", e);
-    wrap.innerHTML = `
-      <div class="item">
-        <p class="itemMeta">Documents aren’t available yet.</p>
-      </div>
-    `;
-    setStatus("Documents loaded", "warn");
+    console.error("Docs unavailable:", e);
+    wrap.innerHTML = `<div class="itemCard"><p class="itemMeta">Documents aren’t available yet.</p></div>`;
+    setStatus("Documents ready", "warn");
   }
 }
+
 // -------------------------
-// Maintenance submit (optional)
+// Maintenance submit
 // -------------------------
 function readFileAsBase64Payload(file) {
   return new Promise((resolve, reject) => {
@@ -473,6 +412,7 @@ function initMaintenanceForm() {
 
       setText("maintenanceMsg", "Submitted. Thanks — we’ll reach out if we need more info.");
       e.target.reset();
+
       await loadMaintenance();
       setStatus("Submitted", "ok");
     } catch (err) {
@@ -483,7 +423,7 @@ function initMaintenanceForm() {
 }
 
 // -------------------------
-// Auth0 UI wiring (optional)
+// Auth UI wiring
 // -------------------------
 function initAuthButtons() {
   on("btnLogin", "click", async () => {
@@ -492,7 +432,6 @@ function initAuthButtons() {
     } catch (e) {
       console.error(e);
       setStatus("Login error", "bad");
-      setText("unitLine", "Login error. Check Auth0 settings.");
     }
   });
 
@@ -505,11 +444,12 @@ function initAuthButtons() {
     }
   });
 
-  // Optional test button if you include it in HTML
   on("callApi", "click", async () => {
     try {
       setStatus("Calling /api/me…", "warn");
       const me = await api("/api/me");
+      portalContext = me;
+      renderHome();
       setText("output", JSON.stringify(me, null, 2));
       setStatus("API ok", "ok");
     } catch (e) {
@@ -524,17 +464,17 @@ async function renderLoggedInState() {
   const authed = await isAuthenticated();
   show("btnLogin", !authed);
   show("btnLogout", authed);
+  show("navBar", authed, "flex");
 
   if (!authed) {
+    portalContext = null;
     setText("unitLine", "Please log in to view your unit.");
+    renderHome();
     setStatus("Not logged in", "info");
     return;
   }
 
-  // Load what exists (each loader is safe if its UI container doesn't exist)
-portalContext = null;
-await loadMe();
-await onRouteChange(); // loads only what the current route needs
+  await loadMe();
 }
 
 // -------------------------
@@ -544,12 +484,7 @@ async function boot() {
   if (isBooted) return;
   isBooted = true;
 
-  initTabs();
-  
-  window.addEventListener("hashchange", () => {
-  onRouteChange().catch(console.error);
-});
-  
+  initNav();
   initMaintenanceForm();
   initAuthButtons();
 
