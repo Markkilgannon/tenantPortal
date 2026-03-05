@@ -1,60 +1,60 @@
 import { jwtVerify, createRemoteJWKSet } from "jose";
+import { getSalesforceAccessToken } from "./_sf.js";
 
-export async function onRequestGet(context) {
+function getBearerToken(request) {
+  const h = request.headers.get("authorization") || "";
+  const m = h.match(/^Bearer\s+(.+)$/i);
+  return m ? m[1] : null;
+}
+
+async function verifyAuth0Jwt(token, env) {
+  const issuer = env.AUTH0_ISSUER; // must end with '/'
+  const audience = env.AUTH0_AUDIENCE;
+
+  const jwks = createRemoteJWKSet(new URL(`${issuer}.well-known/jwks.json`));
+  const { payload } = await jwtVerify(token, jwks, { issuer, audience });
+  return payload;
+}
+
+async function callSfPortalContext(env, sub) {
+  const { access_token, instance_url } = await getSalesforceAccessToken(env);
+
+  const resp = await fetch(`${instance_url}/services/apexrest/portal/context`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${access_token}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ sub }),
+  });
+
+  const json = await resp.json().catch(() => ({}));
+  if (!resp.ok) {
+    return { ok: false, sfStatus: resp.status, sfBody: json };
+  }
+  return json;
+}
+
+export async function onRequestGet({ request, env }) {
   try {
-    const auth = context.request.headers.get("authorization") || "";
-    const match = auth.match(/^Bearer\s+(.+)$/i);
-    if (!match) {
-      return new Response(JSON.stringify({ error: "missing_bearer_token" }), {
-        status: 401,
-        headers: { "content-type": "application/json" },
-      });
+    const token = getBearerToken(request);
+    if (!token) {
+      return new Response(JSON.stringify({ ok: false, error: "Missing Bearer token" }), { status: 401 });
     }
 
-    const token = match[1];
+    const payload = await verifyAuth0Jwt(token, env);
+    const sub = payload.sub;
 
-    // Set these in Cloudflare Pages -> Settings -> Environment variables
-    const ISSUER = context.env.AUTH0_ISSUER;   // e.g. https://your-tenant.eu.auth0.com/
-    const AUDIENCE = context.env.AUTH0_AUDIENCE; // e.g. https://api.yourapp.com
+    const sf = await callSfPortalContext(env, sub);
 
-    if (!ISSUER || !AUDIENCE) {
-      return new Response(JSON.stringify({ error: "missing_env_vars", ISSUER: !!ISSUER, AUDIENCE: !!AUDIENCE }), {
-        status: 500,
-        headers: { "content-type": "application/json" },
-      });
-    }
-
-    const jwks = createRemoteJWKSet(new URL(`${ISSUER}.well-known/jwks.json`));
-
-    const { payload, protectedHeader } = await jwtVerify(token, jwks, {
-      issuer: ISSUER,
-      audience: AUDIENCE,
+    return new Response(JSON.stringify({ ok: true, sub, sf }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
     });
-
-    return new Response(
-      JSON.stringify({
-        ok: true,
-        header: protectedHeader,
-        // common useful claims:
-        sub: payload.sub,
-        email: payload.email,
-        scope: payload.scope,
-        aud: payload.aud,
-        iss: payload.iss,
-        exp: payload.exp,
-        iat: payload.iat,
-        payload,
-      }),
-      { status: 200, headers: { "content-type": "application/json" } }
-    );
   } catch (e) {
-    return new Response(
-      JSON.stringify({
-        ok: false,
-        error: "jwt_verify_failed",
-        message: e?.message || String(e),
-      }),
-      { status: 401, headers: { "content-type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ ok: false, error: "Server error", details: String(e?.message || e) }), {
+      status: 500,
+      headers: { "Content-Type": "application/json" },
+    });
   }
 }
