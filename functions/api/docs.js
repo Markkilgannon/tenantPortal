@@ -25,7 +25,7 @@ export async function onRequestGet({ request, env }) {
 
     const { access_token, instance_url } = await getSalesforceAccessToken(env);
 
-    const resp = await fetch(`${instance_url}/services/apexrest/portal/docs`, {
+    const resp = await fetch(`${instance_url}/services/apexrest/portal/docs2`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${access_token}`,
@@ -34,12 +34,12 @@ export async function onRequestGet({ request, env }) {
       body: JSON.stringify({ sub }),
     });
 
-    const ct = resp.headers.get("content-type") || "";
     const text = await resp.text();
-    const data = ct.includes("application/json") ? JSON.parse(text || "[]") : [];
+    const ct = resp.headers.get("content-type") || "";
+    const data = ct.includes("application/json") ? JSON.parse(text || "[]") : text;
 
     if (!resp.ok) {
-      return new Response(JSON.stringify({ ok: false, sfStatus: resp.status, sfBody: data || text }), {
+      return new Response(JSON.stringify({ ok: false, sfStatus: resp.status, sfBody: data }), {
         status: 502,
         headers: { "Content-Type": "application/json" },
       });
