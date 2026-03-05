@@ -101,7 +101,7 @@ export async function onRequestGet({ request, env }) {
     const { access_token, instance_url } = await getSalesforceAccessToken(env);
 
     const resp = await fetch(
-      `${instance_url}/services/apexrest/portal/maintenance?sub=${encodeURIComponent(sub)}`,
+      `${instance_url}/services/apexrest/portal/maintenance/list?sub=${encodeURIComponent(sub)}`,
       { headers: { Authorization: `Bearer ${access_token}` } }
     );
 
