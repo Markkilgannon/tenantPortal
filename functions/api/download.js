@@ -1,5 +1,5 @@
 import { jwtVerify, createRemoteJWKSet } from "jose";
-import { getSalesforceAccessToken } from "../_sf.js"; // note path: download.js is inside docs/
+import { getSalesforceAccessToken } from "../_sf.js";
 
 function getBearerToken(request) {
   const h = request.headers.get("authorization") || "";
@@ -20,8 +20,8 @@ export async function onRequestGet({ request, env }) {
     const token = getBearerToken(request);
     if (!token) return new Response("Missing Bearer token", { status: 401 });
 
-    // Verify token (we don't need sub for this call if SF endpoint is protected by Cloudflare)
-    await verifyAuth0Jwt(token, env);
+    const payload = await verifyAuth0Jwt(token, env);
+    const sub = payload.sub;
 
     const url = new URL(request.url);
     const contentDocumentId = url.searchParams.get("contentDocumentId");
@@ -29,12 +29,17 @@ export async function onRequestGet({ request, env }) {
 
     const { access_token, instance_url } = await getSalesforceAccessToken(env);
 
-    const sfResp = await fetch(
-      `${instance_url}/services/apexrest/portal/docs/download?contentDocumentId=${encodeURIComponent(contentDocumentId)}`,
-      { headers: { Authorization: `Bearer ${access_token}` } }
-    );
+    // POST to Salesforce download endpoint so SF can validate tenancy access
+    const sfResp = await fetch(`${instance_url}/services/apexrest/portal/docs2/download`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${access_token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ sub, contentDocumentId }),
+    });
 
-    // Stream bytes through
+    // Stream response
     const headers = new Headers();
     const ct = sfResp.headers.get("content-type") || "application/octet-stream";
     headers.set("Content-Type", ct);
