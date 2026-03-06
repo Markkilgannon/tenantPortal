@@ -289,15 +289,35 @@ function renderHome() {
   const lease = ctx.lease || {};
   const tenancy = ctx.tenancy || {};
 
-  const maintenanceCount = Array.isArray(portalContext?.maintenancePreview)
-    ? portalContext.maintenancePreview.length
-    : null;
+  const maintenanceItems = Array.isArray(portalContext?.maintenancePreview)
+    ? portalContext.maintenancePreview
+    : [];
 
-  const documentCount = Array.isArray(portalContext?.docsPreview)
-    ? portalContext.docsPreview.length
-    : null;
+  const docsItems = Array.isArray(portalContext?.docsPreview)
+    ? portalContext.docsPreview
+    : [];
+
+  const latestMaintenance = maintenanceItems.length ? maintenanceItems[0] : null;
 
   el.innerHTML = `
+    <div class="summaryCard">
+      <p class="summaryLabel">Open Requests</p>
+      <p class="summaryValue">${maintenanceItems.length}</p>
+      <p class="summaryText">Maintenance requests currently visible in your portal.</p>
+    </div>
+
+    <div class="summaryCard">
+      <p class="summaryLabel">Documents</p>
+      <p class="summaryValue">${docsItems.length}</p>
+      <p class="summaryText">Files available for download.</p>
+    </div>
+
+    <div class="summaryCard">
+      <p class="summaryLabel">Tenancy</p>
+      <p class="summaryValue summaryValueText">${escapeHtml(tenancy.status || "—")}</p>
+      <p class="summaryText">Your current tenancy status.</p>
+    </div>
+
     <div class="dashboardCard">
       <p class="cardLabel">Tenant</p>
       <p class="cardTitle">${escapeHtml(tenant.name || "Tenant")}</p>
@@ -306,7 +326,7 @@ function renderHome() {
     </div>
 
     <div class="dashboardCard">
-      <p class="cardLabel">Property</p>
+      <p class="cardLabel">Your Home</p>
       <p class="cardTitle">${escapeHtml(unit.propertyName || "Property")}</p>
       <p class="cardText">Unit: ${escapeHtml(unit.name || "—")}</p>
       <p class="cardText">Tenancy: ${escapeHtml(tenancy.status || "—")}</p>
@@ -330,23 +350,26 @@ function renderHome() {
       </div>
     </div>
 
-    <div class="summaryCard">
-  <p class="summaryLabel">Open Requests</p>
-  <p class="summaryValue">${maintenanceCount != null ? maintenanceCount : "—"}</p>
-  <p class="summaryText">Current maintenance items in your portal.</p>
-</div>
-
-<div class="summaryCard">
-  <p class="summaryLabel">Documents</p>
-  <p class="summaryValue">${documentCount != null ? documentCount : "—"}</p>
-  <p class="summaryText">Files available for download.</p>
-</div>
-
-<div class="summaryCard">
-  <p class="summaryLabel">Tenancy</p>
-  <p class="summaryValue">${escapeHtml(tenancy.status || "—")}</p>
-  <p class="summaryText">Your current tenancy status.</p>
-</div>
+    <div class="dashboardCard dashboardCardWide">
+      <p class="cardLabel">Latest activity</p>
+      ${
+        latestMaintenance
+          ? `
+            <p class="cardTitle">${escapeHtml(latestMaintenance.subject || "Maintenance request")}</p>
+            <p class="cardText">Status: ${escapeHtml(latestMaintenance.status || "Open")}</p>
+            <p class="cardText">Submitted: ${escapeHtml(safeDate(latestMaintenance.createdDate))}</p>
+            ${
+              latestMaintenance.portalUpdate
+                ? `<p class="cardText">Latest update: ${escapeHtml(latestMaintenance.portalUpdate)}</p>`
+                : `<p class="cardText">No update has been added yet.</p>`
+            }
+          `
+          : `
+            <p class="cardTitle">No recent activity</p>
+            <p class="cardText">Your latest maintenance updates will appear here.</p>
+          `
+      }
+    </div>
   `;
 
   const btnMaintenance = $("homeGoMaintenance");
