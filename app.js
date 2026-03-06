@@ -211,10 +211,25 @@ async function api(path, opts = {}) {
   const token = await getAccessToken();
   const headers = { ...(opts.headers || {}) };
 
-  if (opts.body && !headers["Content-Type"]) headers["Content-Type"] = "application/json";
+  if (opts.body && !headers["Content-Type"]) {
+    headers["Content-Type"] = "application/json";
+  }
+
   headers.Authorization = `Bearer ${token}`;
 
-  const res = await fetch(path, { ...opts, headers });
+  const res = await fetch(path, {
+    ...opts,
+    headers
+  });
+
+  if (opts.rawResponse) {
+    if (!res.ok) {
+      const text = await res.text().catch(() => "");
+      throw new Error(text || `HTTP ${res.status}`);
+    }
+    return res;
+  }
+
   const ct = res.headers.get("Content-Type") || "";
   const data = ct.includes("application/json")
     ? await res.json().catch(() => ({}))
@@ -228,6 +243,7 @@ async function api(path, opts = {}) {
       (typeof data === "string" ? data : `HTTP ${res.status}`);
     throw new Error(msg);
   }
+
   return data;
 }
 
@@ -357,12 +373,25 @@ async function loadDocs() {
     docs.forEach((d) => {
       const el = document.createElement("div");
       el.className = "itemCard";
-      const url = `/api/docs/download?contentDocumentId=${encodeURIComponent(d.contentDocumentId)}`;
+
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "linkButton";
+      button.textContent = "Download";
+      button.addEventListener("click", () => {
+        downloadDocument(d);
+      });
+
       el.innerHTML = `
         <p class="itemTitle">${escapeHtml(d.title || "Document")}</p>
         <p class="itemMeta">${escapeHtml(d.fileType || "")} • ${escapeHtml(safeDate(d.lastModified))}</p>
-        <p class="itemMeta"><a href="${url}">Download</a></p>
       `;
+
+      const meta = document.createElement("p");
+      meta.className = "itemMeta";
+      meta.appendChild(button);
+
+      el.appendChild(meta);
       wrap.appendChild(el);
     });
 
@@ -371,6 +400,42 @@ async function loadDocs() {
     console.error("Docs unavailable:", e);
     wrap.innerHTML = `<div class="itemCard"><p class="itemMeta">Documents aren’t available yet.</p></div>`;
     setStatus("Documents ready", "warn");
+  }
+}
+
+async function downloadDocument(doc) {
+  try {
+    setStatus(`Downloading ${doc.title || "document"}…`, "warn");
+
+    const res = await api(
+      `/api/docs/download?contentDocumentId=${encodeURIComponent(doc.contentDocumentId)}`,
+      {
+        method: "GET",
+        rawResponse: true
+      }
+    );
+
+    const blob = await res.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+
+    const ext = doc.fileExtension
+  ? `.${doc.fileExtension}`
+  : (doc.fileType ? `.${String(doc.fileType).toLowerCase()}` : "");
+    const filename = `${doc.title || "document"}${ext}`;
+
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    window.URL.revokeObjectURL(blobUrl);
+    setStatus("Documents ready", "ok");
+  } catch (e) {
+    console.error("Download failed:", e);
+    setStatus("Download failed", "bad");
+    alert("Failed to download document.");
   }
 }
 
