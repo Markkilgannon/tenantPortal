@@ -336,16 +336,36 @@ async function loadMaintenance() {
       return;
     }
 
-    items.forEach((i) => {
-      const el = document.createElement("div");
-      el.className = "itemCard";
-      el.innerHTML = `
-        <p class="itemTitle">${escapeHtml(i.subject || "(No subject)")}</p>
-        <p class="itemMeta">${escapeHtml(i.status || "")} • ${escapeHtml(safeDate(i.createdDate))}</p>
-        <p class="itemMeta">${escapeHtml(i.description || "")}</p>
-      `;
-      wrap.appendChild(el);
-    });
+items.forEach((i) => {
+
+  const el = document.createElement("div");
+  el.className = "itemCard";
+
+  el.innerHTML = `
+    <p class="itemTitle">${escapeHtml(i.subject || "(No subject)")}</p>
+
+    <p class="itemMeta">
+      Status: ${escapeHtml(i.status || "Unknown")}
+    </p>
+
+    <p class="itemMeta">
+      Submitted: ${escapeHtml(safeDate(i.createdDate))}
+    </p>
+
+    ${i.portalUpdate ? `
+      <p class="itemMeta">
+        Update: ${escapeHtml(i.portalUpdate)}
+      </p>
+    ` : ""}
+
+    <p class="itemMeta">
+      ${escapeHtml(i.description || "")}
+    </p>
+  `;
+
+  wrap.appendChild(el);
+
+});
 
     setStatus("Maintenance ready", "ok");
   } catch (e) {
