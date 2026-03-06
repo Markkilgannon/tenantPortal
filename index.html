@@ -23,18 +23,29 @@
       <div class="sidebarSection">
         <p class="sidebarLabel">Navigation</p>
         <nav class="sidebarNav" id="navBar" style="display:none;">
-<button class="navItem tabBtn" data-panel="home" type="button">🏠 <span>Home</span></button>
-  <button class="navItem tabBtn" data-panel="maintenance" type="button">🔧 <span>Maintenance</span></button>
-  <button class="navItem tabBtn" data-panel="docs" type="button">📄 <span>Documents</span></button>
-        </nav>
-      </div>
+  <button class="navItem tabBtn" data-panel="home" type="button">
+    <span class="navIcon">🏠</span>
+    <span>Home</span>
+  </button>
+
+  <button class="navItem tabBtn" data-panel="maintenance" type="button">
+    <span class="navIcon">🔧</span>
+    <span>Maintenance</span>
+  </button>
+
+  <button class="navItem tabBtn" data-panel="docs" type="button">
+    <span class="navIcon">📄</span>
+    <span>Documents</span>
+  </button>
+</nav>
 
       <div class="sidebarSection sidebarProperty">
         <p class="sidebarLabel">Your property</p>
-        <div class="propertyMiniCard">
-          <p class="propertyMiniTitle" id="unitLine">Please log in to view your unit.</p>
-          <p class="propertyMiniMeta">Secure tenant access</p>
-        </div>
+       <div class="propertyMiniCard">
+  <p class="propertyMiniEyebrow">Current tenancy</p>
+  <p class="propertyMiniTitle" id="unitLine">Please log in to view your unit.</p>
+  <p class="propertyMiniMeta">Secure tenant access</p>
+</div>
       </div>
 
       <div class="sidebarFooter">
@@ -46,13 +57,13 @@
     <!-- Main content -->
     <main class="mainContent">
       <header class="topHeader">
-        <div>
-          <p class="eyebrow">Tenant dashboard</p>
-          <h2 class="pageTitle">Your portal</h2>
-          <p class="pageSubtitle">
-            View your tenancy details, report maintenance issues and download important documents.
-          </p>
-        </div>
+  <div>
+    <p class="eyebrow">Tenant dashboard</p>
+    <h2 class="pageTitle">Your portal</h2>
+    <p class="pageSubtitle">
+      View your tenancy details, report maintenance issues and download important documents.
+    </p>
+  </div>
 
         <div class="statusWrap">
           <span class="statusPill">
