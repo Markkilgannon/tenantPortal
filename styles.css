@@ -93,19 +93,25 @@ body {
 }
 
 .sidebarNav {
-  display: grid;
+   display: flex;
+  flex-direction: column;
   gap: 8px;
+  width: 100%;
 }
 
+
 .navItem {
-  width: 100%;
+   width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
   text-align: left;
   appearance: none;
   border: 1px solid transparent;
   background: transparent;
   color: var(--text);
   border-radius: 12px;
-  padding: 12px 14px;
+  padding: 14px 16px;
   font-size: 15px;
   font-weight: 700;
   cursor: pointer;
