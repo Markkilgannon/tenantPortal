@@ -129,15 +129,32 @@ body {
   border-color: #cfe0ff;
 }
 
+.navIcon {
+  width: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+}
+
 .sidebarProperty {
   margin-top: auto;
 }
 
 .propertyMiniCard {
   border: 1px solid var(--border);
-  background: var(--surface-soft);
+  background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
   border-radius: var(--radius-md);
-  padding: 14px;
+  padding: 16px;
+}
+
+.propertyMiniEyebrow {
+  margin: 0 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
 }
 
 .propertyMiniTitle {
@@ -150,11 +167,10 @@ body {
 }
 
 .propertyMiniMeta {
-  margin: 6px 0 0;
+  margin: 8px 0 0;
   font-size: 13px;
   color: var(--muted);
 }
-
 .sidebarFooter {
   display: grid;
   gap: 10px;
@@ -196,6 +212,11 @@ body {
   font-size: 16px;
   line-height: 1.5;
   max-width: 700px;
+}
+
+.pageHeaderText {
+  display: grid;
+  gap: 6px;
 }
 
 .statusWrap {
@@ -248,8 +269,19 @@ body {
 }
 
 .dashboardCard {
-  padding: 22px;
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
 }
+
+.dashboardCard::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 3px;
+  background: linear-gradient(90deg, rgba(47, 111, 237, 0.16), rgba(47, 111, 237, 0));
+}
+
 
 .cardLabel {
   margin: 0 0 10px;
@@ -548,8 +580,8 @@ pre {
 
 .summaryValue {
   margin: 0;
-  font-size: 38px;
-  line-height: 1;
+  font-size: 32px;
+  line-height: 1.1;
   font-weight: 800;
   letter-spacing: -0.03em;
   color: var(--text);
@@ -590,7 +622,13 @@ pre {
   justify-content: flex-end;
 }
 
-.maintenanceUpdateBox,
+.maintenanceUpdateBox {
+  border: 1px solid #d9e6ff;
+  background: #f5f9ff;
+  border-radius: 14px;
+  padding: 14px;
+}
+
 .maintenanceDescription {
   border: 1px solid var(--border);
   background: var(--surface-soft);
