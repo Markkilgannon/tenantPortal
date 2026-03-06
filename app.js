@@ -126,6 +126,23 @@ function initNav() {
     }
   });
 
+  function groupDocuments(docs) {
+  const groups = {
+    Lease: [],
+    Property: [],
+    Unit: [],
+    Other: []
+  };
+
+  docs.forEach((doc) => {
+    const key = doc.sourceType || "Other";
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(doc);
+  });
+
+  return groups;
+}
+
   // Default
   setPanel("home");
 }
@@ -482,50 +499,91 @@ async function loadDocs() {
 
     if (!Array.isArray(docs) || !docs.length) {
       wrap.innerHTML = `
-        <div class="documentRow emptyStateCard">
-          <div class="documentInfo">
-            <p class="itemTitle">No documents available</p>
-            <p class="itemMeta">There are currently no documents linked to your tenancy.</p>
-          </div>
+        <div class="documentGroup emptyStateCard">
+          <p class="itemTitle">No documents available</p>
+          <p class="itemMeta">There are currently no documents linked to your tenancy.</p>
         </div>
       `;
       setStatus("Documents ready", "ok");
       return;
     }
 
-    docs.forEach((d) => {
-      const el = document.createElement("div");
-      el.className = "documentRow";
+    const groups = {
+      Lease: [],
+      Property: [],
+      Unit: [],
+      Other: []
+    };
 
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "btn btn-secondary documentAction";
-      button.textContent = "Download";
-      button.addEventListener("click", () => {
-        downloadDocument(d);
+    docs.forEach((doc) => {
+      const key = doc.sourceType || "Other";
+      if (!groups[key]) groups[key] = [];
+      groups[key].push(doc);
+    });
+
+    const orderedGroups = [
+      { key: "Lease", title: "Lease Documents" },
+      { key: "Property", title: "Property Documents" },
+      { key: "Unit", title: "Unit Documents" },
+      { key: "Other", title: "Other Documents" }
+    ];
+
+    orderedGroups.forEach((group) => {
+      const items = groups[group.key];
+      if (!items || !items.length) return;
+
+      const section = document.createElement("section");
+      section.className = "documentGroup";
+
+      const heading = document.createElement("div");
+      heading.className = "documentGroupHeader";
+      heading.innerHTML = `
+        <p class="documentGroupTitle">${escapeHtml(group.title)}</p>
+        <p class="documentGroupMeta">${items.length} ${items.length === 1 ? "file" : "files"}</p>
+      `;
+      section.appendChild(heading);
+
+      const list = document.createElement("div");
+      list.className = "documentGroupList";
+
+      items.forEach((d) => {
+        const row = document.createElement("div");
+        row.className = "documentRow";
+
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "btn btn-secondary documentAction";
+        button.textContent = "Download";
+        button.addEventListener("click", () => {
+          downloadDocument(d);
+        });
+
+        row.innerHTML = `
+          <div class="documentIcon" aria-hidden="true">📄</div>
+          <div class="documentInfo">
+            <p class="itemTitle">${escapeHtml(d.title || "Document")}</p>
+            <p class="itemMeta">
+              ${escapeHtml(d.fileType || "File")} • ${escapeHtml(safeDate(d.lastModified))}
+            </p>
+            ${d.sourceLabel ? `<p class="itemMeta">${escapeHtml(d.sourceLabel)}</p>` : ""}
+          </div>
+        `;
+
+        row.appendChild(button);
+        list.appendChild(row);
       });
 
-      el.innerHTML = `
-        <div class="documentIcon" aria-hidden="true">📄</div>
-        <div class="documentInfo">
-          <p class="itemTitle">${escapeHtml(d.title || "Document")}</p>
-          <p class="itemMeta">${escapeHtml(d.fileType || "File")} • ${escapeHtml(safeDate(d.lastModified))}</p>
-        </div>
-      `;
-
-      el.appendChild(button);
-      wrap.appendChild(el);
+      section.appendChild(list);
+      wrap.appendChild(section);
     });
 
     setStatus("Documents ready", "ok");
   } catch (e) {
     console.error("Docs unavailable:", e);
     wrap.innerHTML = `
-      <div class="documentRow emptyStateCard">
-        <div class="documentInfo">
-          <p class="itemTitle">Documents unavailable</p>
-          <p class="itemMeta">Documents aren’t available right now.</p>
-        </div>
+      <div class="documentGroup emptyStateCard">
+        <p class="itemTitle">Documents unavailable</p>
+        <p class="itemMeta">Documents aren’t available right now.</p>
       </div>
     `;
     setStatus("Documents ready", "warn");
