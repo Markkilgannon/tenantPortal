@@ -1,5 +1,5 @@
 import { jwtVerify, createRemoteJWKSet } from "jose";
-import { getSalesforceAccessToken } from "./_sf.js";
+import { getSalesforceAccessToken } from "../_sf.js";
 
 function getBearerToken(request) {
   const h = request.headers.get("authorization") || "";
