@@ -8,276 +8,436 @@
 
   <style>
     :root {
-      --bg: #0b1220;
-      --card: rgba(255, 255, 255, 0.06);
-      --card-border: rgba(255, 255, 255, 0.12);
-      --text: rgba(255, 255, 255, 0.92);
-      --muted: rgba(255, 255, 255, 0.68);
-      --accent: #6ea8ff;
-      --accent-2: #7cf0c5;
-      --danger: #ff6b6b;
-      --shadow: 0 20px 60px rgba(0,0,0,0.45);
-      --radius: 16px;
+      --bg: #f5f7fb;
+      --surface: #ffffff;
+      --surface-soft: #f8fafc;
+      --border: #e5eaf1;
+      --text: #142033;
+      --muted: #637087;
+      --primary: #2f6fed;
+      --primary-soft: #eaf1ff;
+      --success: #1f9d55;
+      --success-soft: #e9f8ef;
+      --warning: #d9822b;
+      --warning-soft: #fff4e8;
+      --danger: #c94b4b;
+      --danger-soft: #fdeeee;
+      --shadow: 0 10px 30px rgba(16, 24, 40, 0.06);
+      --radius-lg: 18px;
+      --radius-md: 14px;
+      --radius-sm: 10px;
       --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
     }
 
     * { box-sizing: border-box; }
     html, body { height: 100%; }
+
     body {
       margin: 0;
       font-family: var(--sans);
       color: var(--text);
-      background:
-        radial-gradient(900px 500px at 20% 10%, rgba(110,168,255,0.25), transparent 55%),
-        radial-gradient(700px 500px at 80% 30%, rgba(124,240,197,0.16), transparent 55%),
-        linear-gradient(180deg, #070b14 0%, #0b1220 60%, #070b14 100%);
-      display: grid;
-      place-items: center;
-      padding: 24px;
+      background: var(--bg);
+      padding: 24px 16px 40px;
     }
 
     .wrap {
       width: 100%;
-      max-width: 980px;
+      max-width: 1040px;
+      margin: 0 auto;
       display: grid;
-      gap: 18px;
+      gap: 20px;
     }
 
     header {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow);
+      padding: 20px 22px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 16px;
-      padding: 16px 18px;
-      background: var(--card);
-      border: 1px solid var(--card-border);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(10px);
+      gap: 20px;
+      flex-wrap: wrap;
     }
 
     .brand {
       display: flex;
       align-items: center;
-      gap: 12px;
-      min-width: 220px;
+      gap: 14px;
+      min-width: 240px;
     }
 
     .logo {
-      width: 38px;
-      height: 38px;
-      border-radius: 12px;
-      background: linear-gradient(135deg, var(--accent), var(--accent-2));
-      box-shadow: 0 12px 26px rgba(110,168,255,0.22);
+      width: 44px;
+      height: 44px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, #5ea8ff, #7ce7c7);
       flex: 0 0 auto;
     }
 
-    .title { display: grid; gap: 2px; }
-    .title h1 { font-size: 16px; margin: 0; letter-spacing: 0.2px; }
-    .title p { margin: 0; font-size: 12px; color: var(--muted); }
+    .title {
+      display: grid;
+      gap: 4px;
+    }
 
-    .actions {
+    .title h1 {
+      margin: 0;
+      font-size: 22px;
+      line-height: 1.1;
+      letter-spacing: -0.02em;
+    }
+
+    .title p {
+      margin: 0;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    .headerRight {
       display: flex;
       align-items: center;
       gap: 10px;
       flex-wrap: wrap;
-      justify-content: flex-end;
     }
 
     .btn {
       appearance: none;
-      border: 1px solid rgba(255,255,255,0.14);
-      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      background: var(--surface);
       color: var(--text);
-      padding: 10px 12px;
+      padding: 11px 16px;
       border-radius: 12px;
-      font-weight: 600;
+      font-weight: 700;
+      font-size: 14px;
       cursor: pointer;
-      transition: transform 0.05s ease, background 0.15s ease, border-color 0.15s ease;
       line-height: 1;
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 8px;
-      user-select: none;
+      transition: background 0.15s ease, border-color 0.15s ease, transform 0.05s ease;
     }
+
     .btn:hover {
-      background: rgba(255,255,255,0.10);
-      border-color: rgba(255,255,255,0.20);
+      background: #f8fafc;
+      border-color: #d7deea;
     }
-    .btn:active { transform: translateY(1px); }
-    .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+
+    .btn:active {
+      transform: translateY(1px);
+    }
+
+    .btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
 
     .btn-primary {
-      background: linear-gradient(135deg, rgba(110,168,255,0.95), rgba(124,240,197,0.65));
-      border-color: transparent;
-      color: #06101f;
+      background: var(--primary);
+      border-color: var(--primary);
+      color: #ffffff;
+    }
+
+    .btn-primary:hover {
+      background: #255fd1;
+      border-color: #255fd1;
     }
 
     .btn-danger {
-      border-color: rgba(255, 107, 107, 0.35);
-      background: rgba(255, 107, 107, 0.10);
+      background: var(--danger-soft);
+      border-color: #f1d1d1;
+      color: var(--danger);
     }
 
-    main { display: grid; gap: 14px; }
+    .btn-danger:hover {
+      background: #fae4e4;
+      border-color: #ebc3c3;
+    }
+
+    main {
+      display: grid;
+      gap: 20px;
+    }
 
     .card {
-      padding: 16px 18px;
-      background: var(--card);
-      border: 1px solid var(--card-border);
-      border-radius: var(--radius);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-lg);
       box-shadow: var(--shadow);
-      backdrop-filter: blur(10px);
-      overflow: hidden;
+      padding: 22px;
     }
 
-    .grid {
+    .topBar {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+
+    .pageIntro {
       display: grid;
-      gap: 14px;
-      grid-template-columns: 1.2fr 0.8fr;
-      align-items: start;
+      gap: 8px;
+    }
+
+    .pageIntro h2 {
+      margin: 0;
+      font-size: 18px;
+      line-height: 1.2;
+      letter-spacing: -0.01em;
     }
 
     .hint {
-      color: var(--muted);
-      font-size: 13px;
       margin: 0;
-      line-height: 1.45;
+      color: var(--muted);
+      font-size: 14px;
+      line-height: 1.5;
     }
 
     .statusRow {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-top: 10px;
+      gap: 10px;
       flex-wrap: wrap;
     }
 
     .pill {
-      padding: 7px 10px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,0.14);
-      background: rgba(255,255,255,0.06);
-      color: var(--muted);
-      font-size: 12px;
       display: inline-flex;
       align-items: center;
       gap: 8px;
+      padding: 9px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: var(--surface-soft);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 600;
     }
 
     .dot {
       width: 8px;
       height: 8px;
       border-radius: 999px;
-      background: rgba(255,255,255,0.35);
-      box-shadow: 0 0 0 3px rgba(255,255,255,0.08);
+      background: #c8d0dc;
+      flex: 0 0 auto;
+    }
+
+    .unitPill {
+      font-family: var(--mono);
+      color: var(--text);
+      background: #f8fafc;
     }
 
     .nav {
       display: flex;
-      gap: 8px;
+      gap: 10px;
       flex-wrap: wrap;
-      margin-top: 14px;
+      margin-bottom: 18px;
     }
 
     .tabBtn {
-      border: 1px solid rgba(255,255,255,0.14);
-      background: rgba(255,255,255,0.06);
-      color: var(--text);
-      padding: 8px 10px;
+      appearance: none;
+      border: 1px solid var(--border);
+      background: #ffffff;
+      color: var(--muted);
+      padding: 10px 15px;
       border-radius: 999px;
       cursor: pointer;
       font-weight: 700;
-      font-size: 12px;
-    }
-    .tabBtn.active {
-      background: rgba(110,168,255,0.18);
-      border-color: rgba(110,168,255,0.40);
+      font-size: 14px;
+      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
     }
 
-    .homeGrid {
-      display: grid;
-      gap: 12px;
-      grid-template-columns: 1fr;
-      margin-top: 14px;
+    .tabBtn:hover {
+      background: #f8fafc;
+      border-color: #d7deea;
+      color: var(--text);
     }
-    @media (min-width: 860px) {
-      .homeGrid { grid-template-columns: 1fr 1fr; }
+
+    .tabBtn.active {
+      background: var(--primary-soft);
+      border-color: #cfe0ff;
+      color: var(--primary);
     }
 
     .panel { display: none; }
     .panel.active { display: block; }
 
+    .homeGrid {
+      display: grid;
+      gap: 16px;
+      grid-template-columns: 1fr;
+    }
+
+    @media (min-width: 820px) {
+      .homeGrid {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+
     .itemCard {
-      padding: 14px;
-      border: 1px solid rgba(255,255,255,0.12);
-      border-radius: 14px;
-      background: rgba(255,255,255,0.04);
+      padding: 18px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-md);
+      background: var(--surface);
     }
+
     .itemTitle {
-      margin: 0 0 6px 0;
+      margin: 0 0 8px 0;
       font-weight: 800;
-      letter-spacing: 0.2px;
-      font-size: 14px;
+      font-size: 18px;
+      line-height: 1.25;
+      letter-spacing: -0.01em;
+      color: var(--text);
     }
+
     .itemMeta {
       margin: 0;
       color: var(--muted);
-      font-size: 13px;
-      line-height: 1.45;
-    }
-    .itemMeta + .itemMeta { margin-top: 6px; }
-
-    pre {
-      margin: 0;
-      padding: 14px;
-      border-radius: 14px;
-      background: rgba(0, 0, 0, 0.35);
-      border: 1px solid rgba(255,255,255,0.12);
-      overflow: auto;
-      font-family: var(--mono);
-      font-size: 12px;
-      line-height: 1.55;
-      color: rgba(255,255,255,0.86);
-      max-height: 420px;
-    }
-
-    input, textarea {
-      width: 100%;
-      border-radius: 12px;
-      border: 1px solid rgba(255,255,255,0.14);
-      background: rgba(255,255,255,0.04);
-      color: var(--text);
-      padding: 10px 12px;
-      outline: none;
-      font-family: var(--sans);
       font-size: 14px;
+      line-height: 1.55;
     }
-    textarea { min-height: 110px; resize: vertical; }
+
+    .itemMeta + .itemMeta {
+      margin-top: 8px;
+    }
+
+    .sectionStack {
+      display: grid;
+      gap: 14px;
+    }
+
+    .formCard {
+      background: #fbfcfe;
+    }
 
     label {
       display: block;
-      font-size: 12px;
+      margin: 12px 0 6px;
       color: var(--muted);
-      margin: 10px 0 6px;
+      font-size: 13px;
       font-weight: 700;
     }
 
-    .footer {
+    input,
+    textarea {
+      width: 100%;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      background: #ffffff;
+      color: var(--text);
+      padding: 12px 14px;
+      font-family: var(--sans);
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    input:focus,
+    textarea:focus {
+      border-color: #bfd3ff;
+      box-shadow: 0 0 0 4px rgba(47, 111, 237, 0.08);
+    }
+
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+
+    .formActions {
       display: flex;
-      justify-content: space-between;
-      gap: 12px;
-      color: var(--muted);
-      font-size: 12px;
-      padding: 0 2px;
+      gap: 10px;
+      margin-top: 14px;
       flex-wrap: wrap;
     }
 
-    @media (max-width: 860px) {
-      .grid { grid-template-columns: 1fr; }
-      header { align-items: flex-start; }
-      .actions { justify-content: flex-start; }
+    .linkButton {
+      background: none;
+      border: none;
+      padding: 0;
+      margin: 0;
+      color: var(--primary);
+      text-decoration: none;
+      cursor: pointer;
+      font: inherit;
+      font-weight: 700;
+    }
+
+    .linkButton:hover {
+      text-decoration: underline;
+    }
+
+    .statusBadge {
+      display: inline-block;
+      padding: 5px 10px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      line-height: 1;
+    }
+
+    .statusOpen {
+      background: #eef2f7;
+      color: #5f6c7b;
+    }
+
+    .statusInProgress {
+      background: #e8f1ff;
+      color: #2f6fed;
+    }
+
+    .statusWaiting {
+      background: #fff4e8;
+      color: #d9822b;
+    }
+
+    .statusCompleted {
+      background: #e9f8ef;
+      color: #1f9d55;
+    }
+
+    .quickActions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+
+    .devPanel {
+      display: none;
+    }
+
+    @media (max-width: 720px) {
+      body {
+        padding: 16px 12px 28px;
+      }
+
+      header,
+      .card {
+        padding: 18px;
+      }
+
+      .title h1 {
+        font-size: 20px;
+      }
+
+      .itemTitle {
+        font-size: 17px;
+      }
+
+      .btn,
+      .tabBtn {
+        width: 100%;
+      }
+
+      .headerRight,
+      .quickActions,
+      .formActions {
+        width: 100%;
+      }
     }
   </style>
 </head>
@@ -289,47 +449,42 @@
         <div class="logo" aria-hidden="true"></div>
         <div class="title">
           <h1>Tenant Portal</h1>
-          <p>Secure access to your unit, lease, documents & maintenance</p>
+          <p id="unitLine">Please log in to view your unit.</p>
         </div>
       </div>
 
-      <div class="actions">
-        <button class="btn btn-primary" id="btnLogin" type="button">🔐 Login</button>
-        <button class="btn btn-danger" id="btnLogout" type="button">🚪 Logout</button>
-        <button class="btn" id="callApi" type="button">⚡ Call /api/me</button>
+      <div class="headerRight">
+        <button class="btn btn-primary" id="btnLogin" type="button">Login</button>
+        <button class="btn btn-danger" id="btnLogout" type="button">Logout</button>
       </div>
     </header>
 
-    <main class="grid">
-      <!-- LEFT: Portal -->
+    <main>
       <section class="card">
-        <p class="hint">
-          After you login, your dashboard will show your property, unit and lease information.
-        </p>
+        <div class="topBar">
+          <div class="pageIntro">
+            <h2>Your portal</h2>
+            <p class="hint">
+              View your tenancy details, report maintenance issues and download important documents.
+            </p>
+          </div>
 
-        <div class="statusRow">
-          <span class="pill">
-            <span class="dot" id="statusDot"></span>
-            <span id="statusText">Status: ready</span>
-          </span>
-
-          <span class="pill">
-            <span id="unitLine" style="font-family: var(--mono); color: rgba(255,255,255,0.86);">
-              Please log in to view your unit.
+          <div class="statusRow">
+            <span class="pill">
+              <span class="dot" id="statusDot"></span>
+              <span id="statusText">Status: ready</span>
             </span>
-          </span>
+          </div>
         </div>
 
-        <!-- NAV -->
         <div class="nav" id="navBar" style="display:none;">
           <button class="tabBtn" data-panel="home" type="button">Home</button>
           <button class="tabBtn" data-panel="maintenance" type="button">Maintenance</button>
           <button class="tabBtn" data-panel="docs" type="button">Documents</button>
         </div>
 
-        <!-- PANELS -->
         <div id="panel-home" class="panel active">
-          <div id="homeCards" class="homeGrid" style="margin-top:14px;">
+          <div id="homeCards" class="homeGrid">
             <div class="itemCard">
               <p class="itemTitle">Welcome</p>
               <p class="itemMeta">Login to see your unit and lease details.</p>
@@ -338,54 +493,50 @@
         </div>
 
         <div id="panel-maintenance" class="panel">
-          <div class="itemCard" style="margin-top:14px;">
-            <p class="itemTitle">Submit a maintenance request</p>
-            <p class="itemMeta">Describe the issue and add photos if needed.</p>
+          <div class="sectionStack">
+            <div class="itemCard formCard">
+              <p class="itemTitle">Submit a maintenance request</p>
+              <p class="itemMeta">Describe the issue clearly and add photos if needed.</p>
 
-            <form id="maintenanceForm" style="margin-top: 10px;">
-              <label for="subject">Subject</label>
-              <input id="subject" name="subject" placeholder="e.g. Heating not working" />
+              <form id="maintenanceForm" style="margin-top: 12px;">
+                <label for="subject">Subject</label>
+                <input id="subject" name="subject" placeholder="e.g. Heating not working" />
 
-              <label for="description">Description</label>
-              <textarea id="description" name="description" placeholder="Give as much detail as possible…"></textarea>
+                <label for="description">Description</label>
+                <textarea id="description" name="description" placeholder="Give as much detail as possible…"></textarea>
 
-              <label for="photos">Photos (optional)</label>
-              <input id="photos" name="photos" type="file" multiple accept="image/*" />
+                <label for="photos">Photos (optional)</label>
+                <input id="photos" name="photos" type="file" multiple accept="image/*" />
 
-              <div style="display:flex; gap:10px; margin-top:12px; flex-wrap:wrap;">
-                <button class="btn btn-primary" type="submit">Submit request</button>
-              </div>
+                <div class="formActions">
+                  <button class="btn btn-primary" type="submit">Submit request</button>
+                </div>
 
-              <p class="itemMeta" id="maintenanceMsg" style="margin-top:10px;"></p>
-            </form>
+                <p class="itemMeta" id="maintenanceMsg" style="margin-top:10px;"></p>
+              </form>
+            </div>
+
+            <div id="maintenanceList" class="sectionStack"></div>
           </div>
-
-          <div id="maintenanceList" style="margin-top:12px; display:grid; gap:12px;"></div>
         </div>
 
         <div id="panel-docs" class="panel">
-          <div class="itemCard" style="margin-top:14px;">
-            <p class="itemTitle">Documents</p>
-            <p class="itemMeta">Leases, manuals and property documents available to you.</p>
-          </div>
+          <div class="sectionStack">
+            <div class="itemCard">
+              <p class="itemTitle">Documents</p>
+              <p class="itemMeta">Lease, property and related documents available to you.</p>
+            </div>
 
-          <div id="docsList" style="margin-top:12px; display:grid; gap:12px;"></div>
+            <div id="docsList" class="sectionStack"></div>
+          </div>
         </div>
       </section>
 
-      <!-- RIGHT: Debug output -->
-      <section class="card">
-        <p class="hint" style="margin-bottom: 10px;">
-          Debug output (useful while wiring endpoints).
-        </p>
+      <section class="devPanel">
         <pre id="output" aria-live="polite">{ "hint": "Login to load your dashboard" }</pre>
+        <button class="btn" id="callApi" type="button">Call /api/me</button>
       </section>
     </main>
-
-    <div class="footer">
-      <span>Tenant → Auth0 → Cloudflare Pages Functions → Salesforce</span>
-      <span>Tip: DevTools → Network to inspect API calls</span>
-    </div>
   </div>
 
   <script src="/vendor/auth0-spa-js.production.js"></script>
