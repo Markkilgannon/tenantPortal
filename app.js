@@ -314,16 +314,22 @@ function renderHome() {
     </div>
 
     <div class="summaryCard">
-      <p class="summaryLabel">Open Requests</p>
-      <p class="summaryValue">${maintenanceCount != null ? maintenanceCount : "—"}</p>
-      <p class="summaryText">Current maintenance items in your portal.</p>
-    </div>
+  <p class="summaryLabel">Open Requests</p>
+  <p class="summaryValue">${maintenanceCount != null ? maintenanceCount : "—"}</p>
+  <p class="summaryText">Current maintenance items in your portal.</p>
+</div>
 
-    <div class="summaryCard">
-      <p class="summaryLabel">Documents</p>
-      <p class="summaryValue">${documentCount != null ? documentCount : "—"}</p>
-      <p class="summaryText">Files available for download.</p>
-    </div>
+<div class="summaryCard">
+  <p class="summaryLabel">Documents</p>
+  <p class="summaryValue">${documentCount != null ? documentCount : "—"}</p>
+  <p class="summaryText">Files available for download.</p>
+</div>
+
+<div class="summaryCard">
+  <p class="summaryLabel">Tenancy</p>
+  <p class="summaryValue">${escapeHtml(tenancy.status || "—")}</p>
+  <p class="summaryText">Your current tenancy status.</p>
+</div>
   `;
 
   const btnMaintenance = $("homeGoMaintenance");
