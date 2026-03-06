@@ -258,9 +258,10 @@ function renderHome() {
 
   if (!ctx) {
     el.innerHTML = `
-      <div class="itemCard">
-        <p class="itemTitle">Welcome</p>
-        <p class="itemMeta">Login to see your unit and lease details.</p>
+      <div class="dashboardCard">
+        <p class="cardLabel">Welcome</p>
+        <p class="cardTitle">Login to see your details</p>
+        <p class="cardText">Your property, lease and tenancy information will appear here.</p>
       </div>
     `;
     return;
@@ -272,31 +273,34 @@ function renderHome() {
   const tenancy = ctx.tenancy || {};
 
   el.innerHTML = `
-    <div class="itemCard">
-      <p class="itemTitle">Welcome, ${escapeHtml(tenant.name || "Tenant")}</p>
-      <p class="itemMeta">${escapeHtml(tenant.email || "")}</p>
-      <p class="itemMeta">${escapeHtml(tenant.phone || "")}</p>
+    <div class="dashboardCard">
+      <p class="cardLabel">Tenant</p>
+      <p class="cardTitle">${escapeHtml(tenant.name || "Tenant")}</p>
+      <p class="cardText">${escapeHtml(tenant.email || "No email available")}</p>
+      <p class="cardText">${escapeHtml(tenant.phone || "No phone available")}</p>
     </div>
 
-    <div class="itemCard">
-      <p class="itemTitle">${escapeHtml(unit.propertyName || "Property")}</p>
-      <p class="itemMeta">Unit: ${escapeHtml(unit.name || "")}</p>
-      <p class="itemMeta">Tenancy: ${escapeHtml(tenancy.status || "")}</p>
+    <div class="dashboardCard">
+      <p class="cardLabel">Property</p>
+      <p class="cardTitle">${escapeHtml(unit.propertyName || "Property")}</p>
+      <p class="cardText">Unit: ${escapeHtml(unit.name || "—")}</p>
+      <p class="cardText">Tenancy: ${escapeHtml(tenancy.status || "—")}</p>
     </div>
 
-    <div class="itemCard">
-      <p class="itemTitle">Lease ${escapeHtml(lease.name || "")}</p>
-      <p class="itemMeta">${escapeHtml(lease.startDate || "?")} → ${escapeHtml(lease.endDate || "?")}</p>
-      <p class="itemMeta">Status: ${escapeHtml(lease.status || "")}</p>
+    <div class="dashboardCard">
+      <p class="cardLabel">Lease</p>
+      <p class="cardTitle">${escapeHtml(lease.name || "Lease")}</p>
+      <p class="cardText">${escapeHtml(lease.startDate || "?")} → ${escapeHtml(lease.endDate || "?")}</p>
+      <p class="cardText">Status: ${escapeHtml(lease.status || "—")}</p>
     </div>
 
-    <div class="itemCard">
-      <p class="itemTitle">Quick actions</p>
-      <p class="itemMeta">Use the navigation above to submit maintenance or view documents.</p>
+    <div class="dashboardCard">
+      <p class="cardLabel">Quick actions</p>
+      <p class="cardTitle">What would you like to do?</p>
+      <p class="cardText">Use the navigation to submit a maintenance request or download important documents.</p>
     </div>
   `;
 }
-
 // -------------------------
 // Loaders
 // -------------------------
@@ -321,6 +325,15 @@ async function loadMe() {
   setStatus("Ready", "ok");
 }
 
+function statusClass(status) {
+  const s = String(status || "").toLowerCase().trim();
+
+  if (s === "completed") return "statusBadge statusCompleted";
+  if (s === "in progress") return "statusBadge statusInProgress";
+  if (s === "waiting for contractor") return "statusBadge statusWaiting";
+  return "statusBadge statusOpen";
+}
+
 async function loadMaintenance() {
   const wrap = $("maintenanceList");
   if (!wrap) return;
@@ -329,52 +342,60 @@ async function loadMaintenance() {
   wrap.innerHTML = "";
 
   try {
-    const items = await api("/api/maintenance"); // optional list
+    const items = await api("/api/maintenance");
+
     if (!Array.isArray(items) || !items.length) {
-      wrap.innerHTML = `<div class="itemCard"><p class="itemMeta">No requests yet.</p></div>`;
+      wrap.innerHTML = `
+        <div class="itemCard">
+          <p class="itemTitle">No maintenance requests yet</p>
+          <p class="itemMeta">When you submit a request, it will appear here with its latest status and updates.</p>
+        </div>
+      `;
       setStatus("Maintenance ready", "ok");
       return;
     }
 
-items.forEach((i) => {
+    items.forEach((i) => {
+      const el = document.createElement("div");
+      el.className = "itemCard";
 
-  const el = document.createElement("div");
-  el.className = "itemCard";
+      el.innerHTML = `
+        <p class="itemTitle">${escapeHtml(i.subject || "(No subject)")}</p>
 
-  el.innerHTML = `
-    <p class="itemTitle">${escapeHtml(i.subject || "(No subject)")}</p>
+        <p class="itemMeta">
+          <span class="${statusClass(i.status)}">${escapeHtml(i.status || "Open")}</span>
+        </p>
 
-    <p class="itemMeta">
-      Status: ${escapeHtml(i.status || "Unknown")}
-    </p>
+        <p class="itemMeta">
+          Submitted: ${escapeHtml(safeDate(i.createdDate))}
+        </p>
 
-    <p class="itemMeta">
-      Submitted: ${escapeHtml(safeDate(i.createdDate))}
-    </p>
+        ${i.portalUpdate ? `
+          <p class="itemMeta">
+            Latest update: ${escapeHtml(i.portalUpdate)}
+          </p>
+        ` : ""}
 
-    ${i.portalUpdate ? `
-      <p class="itemMeta">
-        Update: ${escapeHtml(i.portalUpdate)}
-      </p>
-    ` : ""}
+        <p class="itemMeta">
+          ${escapeHtml(i.description || "")}
+        </p>
+      `;
 
-    <p class="itemMeta">
-      ${escapeHtml(i.description || "")}
-    </p>
-  `;
-
-  wrap.appendChild(el);
-
-});
+      wrap.appendChild(el);
+    });
 
     setStatus("Maintenance ready", "ok");
   } catch (e) {
     console.error("Maintenance list unavailable:", e);
-    wrap.innerHTML = `<div class="itemCard"><p class="itemMeta">Maintenance list isn’t available yet.</p></div>`;
+    wrap.innerHTML = `
+      <div class="itemCard">
+        <p class="itemTitle">Maintenance unavailable</p>
+        <p class="itemMeta">Maintenance requests aren’t available right now.</p>
+      </div>
+    `;
     setStatus("Maintenance ready", "warn");
   }
 }
-
 async function loadDocs() {
   const wrap = $("docsList");
   if (!wrap) return;
@@ -384,8 +405,14 @@ async function loadDocs() {
 
   try {
     const docs = await api("/api/docs");
+
     if (!Array.isArray(docs) || !docs.length) {
-      wrap.innerHTML = `<div class="itemCard"><p class="itemMeta">No documents linked to this unit.</p></div>`;
+      wrap.innerHTML = `
+        <div class="itemCard">
+          <p class="itemTitle">No documents available</p>
+          <p class="itemMeta">There are currently no documents linked to your tenancy.</p>
+        </div>
+      `;
       setStatus("Documents ready", "ok");
       return;
     }
@@ -404,7 +431,9 @@ async function loadDocs() {
 
       el.innerHTML = `
         <p class="itemTitle">${escapeHtml(d.title || "Document")}</p>
-        <p class="itemMeta">${escapeHtml(d.fileType || "")} • ${escapeHtml(safeDate(d.lastModified))}</p>
+        <p class="itemMeta">
+          ${escapeHtml(d.fileType || "File")} • ${escapeHtml(safeDate(d.lastModified))}
+        </p>
       `;
 
       const meta = document.createElement("p");
@@ -418,11 +447,15 @@ async function loadDocs() {
     setStatus("Documents ready", "ok");
   } catch (e) {
     console.error("Docs unavailable:", e);
-    wrap.innerHTML = `<div class="itemCard"><p class="itemMeta">Documents aren’t available yet.</p></div>`;
+    wrap.innerHTML = `
+      <div class="itemCard">
+        <p class="itemTitle">Documents unavailable</p>
+        <p class="itemMeta">Documents aren’t available right now.</p>
+      </div>
+    `;
     setStatus("Documents ready", "warn");
   }
 }
-
 async function downloadDocument(doc) {
   try {
     setStatus(`Downloading ${doc.title || "document"}…`, "warn");
