@@ -48,9 +48,8 @@ body {
   padding: 24px 18px;
   display: flex;
   flex-direction: column;
-  gap: 24px;
+  gap: 18px;
 }
-
 .sidebarBrand {
   display: flex;
   align-items: center;
