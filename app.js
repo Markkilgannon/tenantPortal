@@ -258,10 +258,10 @@ function renderHome() {
 
   if (!ctx) {
     el.innerHTML = `
-      <div class="dashboardCard">
+      <div class="dashboardCard dashboardCardWide">
         <p class="cardLabel">Welcome</p>
-        <p class="cardTitle">Login to see your details</p>
-        <p class="cardText">Your property, lease and tenancy information will appear here.</p>
+        <p class="cardTitle">Login to access your portal</p>
+        <p class="cardText">View your property details, submit maintenance requests and download important documents.</p>
       </div>
     `;
     return;
@@ -271,6 +271,14 @@ function renderHome() {
   const unit = ctx.unit || {};
   const lease = ctx.lease || {};
   const tenancy = ctx.tenancy || {};
+
+  const maintenanceCount = Array.isArray(portalContext?.maintenancePreview)
+    ? portalContext.maintenancePreview.length
+    : null;
+
+  const documentCount = Array.isArray(portalContext?.docsPreview)
+    ? portalContext.docsPreview.length
+    : null;
 
   el.innerHTML = `
     <div class="dashboardCard">
@@ -297,9 +305,42 @@ function renderHome() {
     <div class="dashboardCard">
       <p class="cardLabel">Quick actions</p>
       <p class="cardTitle">What would you like to do?</p>
-      <p class="cardText">Use the navigation to submit a maintenance request or download important documents.</p>
+      <p class="cardText">Use the shortcuts below to manage your tenancy.</p>
+
+      <div class="quickActionRow">
+        <button type="button" class="btn btn-primary" id="homeGoMaintenance">Submit maintenance</button>
+        <button type="button" class="btn btn-secondary" id="homeGoDocs">View documents</button>
+      </div>
+    </div>
+
+    <div class="summaryCard">
+      <p class="summaryLabel">Open Requests</p>
+      <p class="summaryValue">${maintenanceCount != null ? maintenanceCount : "—"}</p>
+      <p class="summaryText">Current maintenance items in your portal.</p>
+    </div>
+
+    <div class="summaryCard">
+      <p class="summaryLabel">Documents</p>
+      <p class="summaryValue">${documentCount != null ? documentCount : "—"}</p>
+      <p class="summaryText">Files available for download.</p>
     </div>
   `;
+
+  const btnMaintenance = $("homeGoMaintenance");
+  if (btnMaintenance) {
+    btnMaintenance.addEventListener("click", async () => {
+      setPanel("maintenance");
+      await loadMaintenance().catch(console.error);
+    });
+  }
+
+  const btnDocs = $("homeGoDocs");
+  if (btnDocs) {
+    btnDocs.addEventListener("click", async () => {
+      setPanel("docs");
+      await loadDocs().catch(console.error);
+    });
+  }
 }
 // -------------------------
 // Loaders
@@ -344,11 +385,17 @@ async function loadMaintenance() {
   try {
     const items = await api("/api/maintenance");
 
+    if (portalContext) {
+      portalContext.maintenancePreview = Array.isArray(items) ? items : [];
+    }
+
     if (!Array.isArray(items) || !items.length) {
       wrap.innerHTML = `
-        <div class="itemCard">
-          <p class="itemTitle">No maintenance requests yet</p>
-          <p class="itemMeta">When you submit a request, it will appear here with its latest status and updates.</p>
+        <div class="maintenanceCard emptyStateCard">
+          <div class="maintenanceMain">
+            <p class="itemTitle">No maintenance requests yet</p>
+            <p class="itemMeta">When you submit a request, it will appear here with its latest status and updates.</p>
+          </div>
         </div>
       `;
       setStatus("Maintenance ready", "ok");
@@ -357,28 +404,30 @@ async function loadMaintenance() {
 
     items.forEach((i) => {
       const el = document.createElement("div");
-      el.className = "itemCard";
+      el.className = "maintenanceCard";
 
       el.innerHTML = `
-        <p class="itemTitle">${escapeHtml(i.subject || "(No subject)")}</p>
-
-        <p class="itemMeta">
-          <span class="${statusClass(i.status)}">${escapeHtml(i.status || "Open")}</span>
-        </p>
-
-        <p class="itemMeta">
-          Submitted: ${escapeHtml(safeDate(i.createdDate))}
-        </p>
+        <div class="maintenanceHeader">
+          <div class="maintenanceMain">
+            <p class="itemTitle">${escapeHtml(i.subject || "(No subject)")}</p>
+            <p class="itemMeta">Submitted: ${escapeHtml(safeDate(i.createdDate))}</p>
+          </div>
+          <div class="maintenanceSide">
+            <span class="${statusClass(i.status)}">${escapeHtml(i.status || "Open")}</span>
+          </div>
+        </div>
 
         ${i.portalUpdate ? `
-          <p class="itemMeta">
-            Latest update: ${escapeHtml(i.portalUpdate)}
-          </p>
+          <div class="maintenanceUpdateBox">
+            <p class="detailLabel">Latest update</p>
+            <p class="itemMeta">${escapeHtml(i.portalUpdate)}</p>
+          </div>
         ` : ""}
 
-        <p class="itemMeta">
-          ${escapeHtml(i.description || "")}
-        </p>
+        <div class="maintenanceDescription">
+          <p class="detailLabel">Description</p>
+          <p class="itemMeta">${escapeHtml(i.description || "No description provided.")}</p>
+        </div>
       `;
 
       wrap.appendChild(el);
@@ -388,9 +437,11 @@ async function loadMaintenance() {
   } catch (e) {
     console.error("Maintenance list unavailable:", e);
     wrap.innerHTML = `
-      <div class="itemCard">
-        <p class="itemTitle">Maintenance unavailable</p>
-        <p class="itemMeta">Maintenance requests aren’t available right now.</p>
+      <div class="maintenanceCard emptyStateCard">
+        <div class="maintenanceMain">
+          <p class="itemTitle">Maintenance unavailable</p>
+          <p class="itemMeta">Maintenance requests aren’t available right now.</p>
+        </div>
       </div>
     `;
     setStatus("Maintenance ready", "warn");
@@ -406,11 +457,17 @@ async function loadDocs() {
   try {
     const docs = await api("/api/docs");
 
+    if (portalContext) {
+      portalContext.docsPreview = Array.isArray(docs) ? docs : [];
+    }
+
     if (!Array.isArray(docs) || !docs.length) {
       wrap.innerHTML = `
-        <div class="itemCard">
-          <p class="itemTitle">No documents available</p>
-          <p class="itemMeta">There are currently no documents linked to your tenancy.</p>
+        <div class="documentRow emptyStateCard">
+          <div class="documentInfo">
+            <p class="itemTitle">No documents available</p>
+            <p class="itemMeta">There are currently no documents linked to your tenancy.</p>
+          </div>
         </div>
       `;
       setStatus("Documents ready", "ok");
@@ -419,28 +476,25 @@ async function loadDocs() {
 
     docs.forEach((d) => {
       const el = document.createElement("div");
-      el.className = "itemCard";
+      el.className = "documentRow";
 
       const button = document.createElement("button");
       button.type = "button";
-      button.className = "linkButton";
+      button.className = "btn btn-secondary documentAction";
       button.textContent = "Download";
       button.addEventListener("click", () => {
         downloadDocument(d);
       });
 
       el.innerHTML = `
-        <p class="itemTitle">${escapeHtml(d.title || "Document")}</p>
-        <p class="itemMeta">
-          ${escapeHtml(d.fileType || "File")} • ${escapeHtml(safeDate(d.lastModified))}
-        </p>
+        <div class="documentIcon" aria-hidden="true">📄</div>
+        <div class="documentInfo">
+          <p class="itemTitle">${escapeHtml(d.title || "Document")}</p>
+          <p class="itemMeta">${escapeHtml(d.fileType || "File")} • ${escapeHtml(safeDate(d.lastModified))}</p>
+        </div>
       `;
 
-      const meta = document.createElement("p");
-      meta.className = "itemMeta";
-      meta.appendChild(button);
-
-      el.appendChild(meta);
+      el.appendChild(button);
       wrap.appendChild(el);
     });
 
@@ -448,9 +502,11 @@ async function loadDocs() {
   } catch (e) {
     console.error("Docs unavailable:", e);
     wrap.innerHTML = `
-      <div class="itemCard">
-        <p class="itemTitle">Documents unavailable</p>
-        <p class="itemMeta">Documents aren’t available right now.</p>
+      <div class="documentRow emptyStateCard">
+        <div class="documentInfo">
+          <p class="itemTitle">Documents unavailable</p>
+          <p class="itemMeta">Documents aren’t available right now.</p>
+        </div>
       </div>
     `;
     setStatus("Documents ready", "warn");
