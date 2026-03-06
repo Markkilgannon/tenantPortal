@@ -361,6 +361,19 @@ async function loadMe() {
   // Render dashboard cards
   renderHome();
 
+  try {
+  const [maintenancePreview, docsPreview] = await Promise.all([
+    api("/api/maintenance").catch(() => []),
+    api("/api/docs").catch(() => [])
+  ]);
+
+  portalContext.maintenancePreview = Array.isArray(maintenancePreview) ? maintenancePreview : [];
+  portalContext.docsPreview = Array.isArray(docsPreview) ? docsPreview : [];
+  renderHome();
+} catch (e) {
+  console.error("Preview load failed:", e);
+}
+
   // Debug output
   setText("output", JSON.stringify(me, null, 2));
   setStatus("Ready", "ok");
