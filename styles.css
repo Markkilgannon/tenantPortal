@@ -517,3 +517,145 @@ pre {
     font-size: 20px;
   }
 }
+
+.dashboardCardWide {
+  grid-column: 1 / -1;
+}
+
+.quickActionRow {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.summaryCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow);
+  padding: 22px;
+}
+
+.summaryLabel {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.summaryValue {
+  margin: 0;
+  font-size: 38px;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--text);
+}
+
+.summaryText {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.maintenanceCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 20px;
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 16px;
+}
+
+.maintenanceHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.maintenanceMain {
+  min-width: 0;
+}
+
+.maintenanceSide {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+}
+
+.maintenanceUpdateBox,
+.maintenanceDescription {
+  border: 1px solid var(--border);
+  background: var(--surface-soft);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.detailLabel {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.documentRow {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px 20px;
+  box-shadow: var(--shadow);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.documentIcon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  flex: 0 0 auto;
+}
+
+.documentInfo {
+  flex: 1;
+  min-width: 0;
+}
+
+.documentAction {
+  flex: 0 0 auto;
+}
+
+.emptyStateCard {
+  align-items: flex-start;
+}
+
+.cardText + .cardText {
+  margin-top: 8px;
+}
+
+@media (max-width: 900px) {
+  .documentRow {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .documentAction {
+    width: 100%;
+  }
+}
