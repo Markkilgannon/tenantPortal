@@ -5,533 +5,125 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Tenant Portal</title>
   <meta name="description" content="Tenant Portal" />
-
-  <style>
-    :root {
-      --bg: #f5f7fb;
-      --surface: #ffffff;
-      --surface-soft: #f8fafc;
-      --border: #e5eaf1;
-      --text: #142033;
-      --muted: #637087;
-      --primary: #2f6fed;
-      --primary-soft: #eaf1ff;
-      --success: #1f9d55;
-      --success-soft: #e9f8ef;
-      --warning: #d9822b;
-      --warning-soft: #fff4e8;
-      --danger: #c94b4b;
-      --danger-soft: #fdeeee;
-      --shadow: 0 10px 30px rgba(16, 24, 40, 0.06);
-      --radius-lg: 18px;
-      --radius-md: 14px;
-      --radius-sm: 10px;
-      --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      --sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
-    }
-
-    * { box-sizing: border-box; }
-    html, body { height: 100%; }
-
-    body {
-      margin: 0;
-      font-family: var(--sans);
-      color: var(--text);
-      background: var(--bg);
-      padding: 24px 16px 40px;
-    }
-
-    .wrap {
-      width: 100%;
-      max-width: 1040px;
-      margin: 0 auto;
-      display: grid;
-      gap: 20px;
-    }
-
-    header {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow);
-      padding: 20px 22px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 20px;
-      flex-wrap: wrap;
-    }
-
-    .brand {
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      min-width: 240px;
-    }
-
-    .logo {
-      width: 44px;
-      height: 44px;
-      border-radius: 14px;
-      background: linear-gradient(135deg, #5ea8ff, #7ce7c7);
-      flex: 0 0 auto;
-    }
-
-    .title {
-      display: grid;
-      gap: 4px;
-    }
-
-    .title h1 {
-      margin: 0;
-      font-size: 22px;
-      line-height: 1.1;
-      letter-spacing: -0.02em;
-    }
-
-    .title p {
-      margin: 0;
-      color: var(--muted);
-      font-size: 14px;
-    }
-
-    .headerRight {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    .btn {
-      appearance: none;
-      border: 1px solid var(--border);
-      background: var(--surface);
-      color: var(--text);
-      padding: 11px 16px;
-      border-radius: 12px;
-      font-weight: 700;
-      font-size: 14px;
-      cursor: pointer;
-      line-height: 1;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      transition: background 0.15s ease, border-color 0.15s ease, transform 0.05s ease;
-    }
-
-    .btn:hover {
-      background: #f8fafc;
-      border-color: #d7deea;
-    }
-
-    .btn:active {
-      transform: translateY(1px);
-    }
-
-    .btn:disabled {
-      opacity: 0.55;
-      cursor: not-allowed;
-    }
-
-    .btn-primary {
-      background: var(--primary);
-      border-color: var(--primary);
-      color: #ffffff;
-    }
-
-    .btn-primary:hover {
-      background: #255fd1;
-      border-color: #255fd1;
-    }
-
-    .btn-danger {
-      background: var(--danger-soft);
-      border-color: #f1d1d1;
-      color: var(--danger);
-    }
-
-    .btn-danger:hover {
-      background: #fae4e4;
-      border-color: #ebc3c3;
-    }
-
-    main {
-      display: grid;
-      gap: 20px;
-    }
-
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      box-shadow: var(--shadow);
-      padding: 22px;
-    }
-
-    .topBar {
-      display: flex;
-      align-items: flex-start;
-      justify-content: space-between;
-      gap: 16px;
-      flex-wrap: wrap;
-      margin-bottom: 18px;
-    }
-
-    .pageIntro {
-      display: grid;
-      gap: 8px;
-    }
-
-    .pageIntro h2 {
-      margin: 0;
-      font-size: 18px;
-      line-height: 1.2;
-      letter-spacing: -0.01em;
-    }
-
-    .hint {
-      margin: 0;
-      color: var(--muted);
-      font-size: 14px;
-      line-height: 1.5;
-    }
-
-    .statusRow {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    .pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 9px 12px;
-      border-radius: 999px;
-      border: 1px solid var(--border);
-      background: var(--surface-soft);
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 600;
-    }
-
-    .dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 999px;
-      background: #c8d0dc;
-      flex: 0 0 auto;
-    }
-
-    .unitPill {
-      font-family: var(--mono);
-      color: var(--text);
-      background: #f8fafc;
-    }
-
-    .nav {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-bottom: 18px;
-    }
-
-    .tabBtn {
-      appearance: none;
-      border: 1px solid var(--border);
-      background: #ffffff;
-      color: var(--muted);
-      padding: 10px 15px;
-      border-radius: 999px;
-      cursor: pointer;
-      font-weight: 700;
-      font-size: 14px;
-      transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
-    }
-
-    .tabBtn:hover {
-      background: #f8fafc;
-      border-color: #d7deea;
-      color: var(--text);
-    }
-
-    .tabBtn.active {
-      background: var(--primary-soft);
-      border-color: #cfe0ff;
-      color: var(--primary);
-    }
-
-    .panel { display: none; }
-    .panel.active { display: block; }
-
-    .homeGrid {
-      display: grid;
-      gap: 16px;
-      grid-template-columns: 1fr;
-    }
-
-    @media (min-width: 820px) {
-      .homeGrid {
-        grid-template-columns: 1fr 1fr;
-      }
-    }
-
-    .itemCard {
-      padding: 18px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius-md);
-      background: var(--surface);
-    }
-
-    .itemTitle {
-      margin: 0 0 8px 0;
-      font-weight: 800;
-      font-size: 18px;
-      line-height: 1.25;
-      letter-spacing: -0.01em;
-      color: var(--text);
-    }
-
-    .itemMeta {
-      margin: 0;
-      color: var(--muted);
-      font-size: 14px;
-      line-height: 1.55;
-    }
-
-    .itemMeta + .itemMeta {
-      margin-top: 8px;
-    }
-
-    .sectionStack {
-      display: grid;
-      gap: 14px;
-    }
-
-    .formCard {
-      background: #fbfcfe;
-    }
-
-    label {
-      display: block;
-      margin: 12px 0 6px;
-      color: var(--muted);
-      font-size: 13px;
-      font-weight: 700;
-    }
-
-    input,
-    textarea {
-      width: 100%;
-      border-radius: 12px;
-      border: 1px solid var(--border);
-      background: #ffffff;
-      color: var(--text);
-      padding: 12px 14px;
-      font-family: var(--sans);
-      font-size: 14px;
-      outline: none;
-      transition: border-color 0.15s ease, box-shadow 0.15s ease;
-    }
-
-    input:focus,
-    textarea:focus {
-      border-color: #bfd3ff;
-      box-shadow: 0 0 0 4px rgba(47, 111, 237, 0.08);
-    }
-
-    textarea {
-      min-height: 120px;
-      resize: vertical;
-    }
-
-    .formActions {
-      display: flex;
-      gap: 10px;
-      margin-top: 14px;
-      flex-wrap: wrap;
-    }
-
-    .linkButton {
-      background: none;
-      border: none;
-      padding: 0;
-      margin: 0;
-      color: var(--primary);
-      text-decoration: none;
-      cursor: pointer;
-      font: inherit;
-      font-weight: 700;
-    }
-
-    .linkButton:hover {
-      text-decoration: underline;
-    }
-
-    .statusBadge {
-      display: inline-block;
-      padding: 5px 10px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 700;
-      line-height: 1;
-    }
-
-    .statusOpen {
-      background: #eef2f7;
-      color: #5f6c7b;
-    }
-
-    .statusInProgress {
-      background: #e8f1ff;
-      color: #2f6fed;
-    }
-
-    .statusWaiting {
-      background: #fff4e8;
-      color: #d9822b;
-    }
-
-    .statusCompleted {
-      background: #e9f8ef;
-      color: #1f9d55;
-    }
-
-    .quickActions {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      margin-top: 10px;
-    }
-
-    .devPanel {
-      display: none;
-    }
-
-    @media (max-width: 720px) {
-      body {
-        padding: 16px 12px 28px;
-      }
-
-      header,
-      .card {
-        padding: 18px;
-      }
-
-      .title h1 {
-        font-size: 20px;
-      }
-
-      .itemTitle {
-        font-size: 17px;
-      }
-
-      .btn,
-      .tabBtn {
-        width: 100%;
-      }
-
-      .headerRight,
-      .quickActions,
-      .formActions {
-        width: 100%;
-      }
-    }
-  </style>
+  <link rel="stylesheet" href="/styles.css" />
 </head>
 
 <body>
-  <div class="wrap">
-    <header>
-      <div class="brand">
+  <div class="appShell">
+    <!-- Sidebar -->
+    <aside class="sidebar">
+      <div class="sidebarBrand">
         <div class="logo" aria-hidden="true"></div>
-        <div class="title">
+        <div class="brandText">
           <h1>Tenant Portal</h1>
-          <p id="unitLine">Please log in to view your unit.</p>
+          <p>Your property account</p>
         </div>
       </div>
 
-      <div class="headerRight">
+      <div class="sidebarSection">
+        <p class="sidebarLabel">Navigation</p>
+        <nav class="sidebarNav" id="navBar" style="display:none;">
+          <button class="navItem tabBtn" data-panel="home" type="button">Home</button>
+          <button class="navItem tabBtn" data-panel="maintenance" type="button">Maintenance</button>
+          <button class="navItem tabBtn" data-panel="docs" type="button">Documents</button>
+        </nav>
+      </div>
+
+      <div class="sidebarSection sidebarProperty">
+        <p class="sidebarLabel">Your property</p>
+        <div class="propertyMiniCard">
+          <p class="propertyMiniTitle" id="unitLine">Please log in to view your unit.</p>
+          <p class="propertyMiniMeta">Secure tenant access</p>
+        </div>
+      </div>
+
+      <div class="sidebarFooter">
         <button class="btn btn-primary" id="btnLogin" type="button">Login</button>
-        <button class="btn btn-danger" id="btnLogout" type="button">Logout</button>
+        <button class="btn btn-secondary" id="btnLogout" type="button">Logout</button>
       </div>
-    </header>
+    </aside>
 
-    <main>
-      <section class="card">
-        <div class="topBar">
-          <div class="pageIntro">
-            <h2>Your portal</h2>
-            <p class="hint">
-              View your tenancy details, report maintenance issues and download important documents.
-            </p>
-          </div>
-
-          <div class="statusRow">
-            <span class="pill">
-              <span class="dot" id="statusDot"></span>
-              <span id="statusText">Status: ready</span>
-            </span>
-          </div>
+    <!-- Main content -->
+    <main class="mainContent">
+      <header class="topHeader">
+        <div>
+          <p class="eyebrow">Tenant dashboard</p>
+          <h2 class="pageTitle">Your portal</h2>
+          <p class="pageSubtitle">
+            View your tenancy details, report maintenance issues and download important documents.
+          </p>
         </div>
 
-        <div class="nav" id="navBar" style="display:none;">
-          <button class="tabBtn" data-panel="home" type="button">Home</button>
-          <button class="tabBtn" data-panel="maintenance" type="button">Maintenance</button>
-          <button class="tabBtn" data-panel="docs" type="button">Documents</button>
+        <div class="statusWrap">
+          <span class="statusPill">
+            <span class="dot" id="statusDot"></span>
+            <span id="statusText">Status: ready</span>
+          </span>
         </div>
+      </header>
 
-        <div id="panel-home" class="panel active">
-          <div id="homeCards" class="homeGrid">
-            <div class="itemCard">
-              <p class="itemTitle">Welcome</p>
-              <p class="itemMeta">Login to see your unit and lease details.</p>
-            </div>
-          </div>
-        </div>
-
-        <div id="panel-maintenance" class="panel">
-          <div class="sectionStack">
-            <div class="itemCard formCard">
-              <p class="itemTitle">Submit a maintenance request</p>
-              <p class="itemMeta">Describe the issue clearly and add photos if needed.</p>
-
-              <form id="maintenanceForm" style="margin-top: 12px;">
-                <label for="subject">Subject</label>
-                <input id="subject" name="subject" placeholder="e.g. Heating not working" />
-
-                <label for="description">Description</label>
-                <textarea id="description" name="description" placeholder="Give as much detail as possible…"></textarea>
-
-                <label for="photos">Photos (optional)</label>
-                <input id="photos" name="photos" type="file" multiple accept="image/*" />
-
-                <div class="formActions">
-                  <button class="btn btn-primary" type="submit">Submit request</button>
-                </div>
-
-                <p class="itemMeta" id="maintenanceMsg" style="margin-top:10px;"></p>
-              </form>
-            </div>
-
-            <div id="maintenanceList" class="sectionStack"></div>
-          </div>
-        </div>
-
-        <div id="panel-docs" class="panel">
-          <div class="sectionStack">
-            <div class="itemCard">
-              <p class="itemTitle">Documents</p>
-              <p class="itemMeta">Lease, property and related documents available to you.</p>
-            </div>
-
-            <div id="docsList" class="sectionStack"></div>
+      <!-- Home -->
+      <section id="panel-home" class="panel active">
+        <div id="homeCards" class="dashboardGrid">
+          <div class="dashboardCard">
+            <p class="cardLabel">Welcome</p>
+            <p class="cardTitle">Login to see your details</p>
+            <p class="cardText">Your property, lease and tenancy information will appear here.</p>
           </div>
         </div>
       </section>
 
+      <!-- Maintenance -->
+      <section id="panel-maintenance" class="panel">
+        <div class="contentGrid">
+          <div class="contentCard formCard">
+            <div class="sectionHeader">
+              <h3>Submit a maintenance request</h3>
+              <p>Describe the issue clearly and add photos if needed.</p>
+            </div>
+
+            <form id="maintenanceForm">
+              <label for="subject">Subject</label>
+              <input id="subject" name="subject" placeholder="e.g. Heating not working" />
+
+              <label for="description">Description</label>
+              <textarea id="description" name="description" placeholder="Give as much detail as possible..."></textarea>
+
+              <label for="photos">Photos (optional)</label>
+              <input id="photos" name="photos" type="file" multiple accept="image/*" />
+
+              <div class="formActions">
+                <button class="btn btn-primary" type="submit">Submit request</button>
+              </div>
+
+              <p class="formMessage" id="maintenanceMsg"></p>
+            </form>
+          </div>
+
+          <div class="contentCard">
+            <div class="sectionHeader">
+              <h3>Your maintenance requests</h3>
+              <p>Track submitted issues and view updates.</p>
+            </div>
+
+            <div id="maintenanceList" class="stackList"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Documents -->
+      <section id="panel-docs" class="panel">
+        <div class="contentCard">
+          <div class="sectionHeader">
+            <h3>Documents</h3>
+            <p>Lease, property and related documents available to you.</p>
+          </div>
+
+          <div id="docsList" class="stackList"></div>
+        </div>
+      </section>
+
+      <!-- Hidden dev hook so existing JS doesn't break -->
       <section class="devPanel">
         <pre id="output" aria-live="polite">{ "hint": "Login to load your dashboard" }</pre>
         <button class="btn" id="callApi" type="button">Call /api/me</button>
