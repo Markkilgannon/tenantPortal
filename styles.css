@@ -730,3 +730,70 @@ pre {
   display: grid;
   gap: 12px;
 }
+
+.dashboardCardWide {
+  grid-column: 1 / -1;
+}
+
+.quickActionRow {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.summaryCard {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow);
+  padding: 22px;
+}
+
+.summaryLabel {
+  margin: 0 0 10px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--primary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.summaryValue {
+  margin: 0;
+  font-size: 38px;
+  line-height: 1;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: var(--text);
+}
+
+.summaryValueText {
+  font-size: 28px;
+  line-height: 1.1;
+}
+
+.summaryText {
+  margin: 12px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.cardText + .cardText {
+  margin-top: 8px;
+}
+
+.dashboardCard {
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.dashboardCard::after {
+  content: "";
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 3px;
+  background: linear-gradient(90deg, rgba(47, 111, 237, 0.16), rgba(47, 111, 237, 0));
+}
