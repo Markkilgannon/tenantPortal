@@ -126,27 +126,8 @@ function initNav() {
     } else if (panel === "docs") {
       await loadDocs().catch(console.error);
     }
-
-    function initMaintenanceFilters() {
-  const container = $("maintenanceFilters");
-  if (!container) return;
-
-  container.addEventListener("click", (e) => {
-    const btn = e.target.closest(".filterBtn");
-    if (!btn) return;
-
-    maintenanceFilter = btn.dataset.filter;
-
-    container.querySelectorAll(".filterBtn").forEach(b => {
-      b.classList.remove("active");
-    });
-
-    btn.classList.add("active");
-
-    renderMaintenanceList();
   });
-}
-  });
+
 
   function groupDocuments(docs) {
   const groups = {
@@ -968,6 +949,26 @@ async function renderLoggedInState() {
   }
 
   await loadMe();
+}
+
+    function initMaintenanceFilters() {
+  const container = $("maintenanceFilters");
+  if (!container) return;
+
+  container.addEventListener("click", (e) => {
+    const btn = e.target.closest(".filterBtn");
+    if (!btn) return;
+
+    maintenanceFilter = btn.dataset.filter;
+
+    container.querySelectorAll(".filterBtn").forEach(b => {
+      b.classList.remove("active");
+    });
+
+    btn.classList.add("active");
+
+    renderMaintenanceList();
+  });
 }
 
 // -------------------------
