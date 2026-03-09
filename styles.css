@@ -686,8 +686,8 @@ pre {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
+  white-space: nowrap;
 }
-
 .filterBtn:hover {
   background: rgba(0,0,0,0.04);
 }
