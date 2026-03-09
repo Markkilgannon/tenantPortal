@@ -1,25 +1,51 @@
-import { verifyAccessToken, salesforceRequest } from "./_sf.js";
+import { jwtVerify, createRemoteJWKSet } from "jose";
+import { getSalesforceAccessToken } from "./_sf.js";
+
+function getAuth0TokenFromRequest(request) {
+  const authHeader = request.headers.get("Authorization") || "";
+  if (!authHeader.startsWith("Bearer ")) {
+    throw new Error("Missing bearer token");
+  }
+  return authHeader.slice("Bearer ".length);
+}
+
+async function verifyAccessToken(token, env) {
+  const issuer = env.AUTH0_ISSUER;
+  const audience = env.AUTH0_AUDIENCE;
+
+  if (!issuer || !audience) {
+    throw new Error("Missing Auth0 env vars (AUTH0_ISSUER, AUTH0_AUDIENCE).");
+  }
+
+  const jwks = createRemoteJWKSet(
+    new URL(`${issuer}.well-known/jwks.json`)
+  );
+
+  const { payload } = await jwtVerify(token, jwks, {
+    issuer,
+    audience
+  });
+
+  return payload;
+}
 
 export async function onRequestPost(context) {
   const { request, env } = context;
 
   try {
-    const authHeader = request.headers.get("Authorization");
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return new Response("Unauthorized", { status: 401 });
-    }
+    const accessToken = getAuth0TokenFromRequest(request);
+    const payload = await verifyAccessToken(accessToken, env);
 
-    const token = authHeader.slice("Bearer ".length);
-    const { payload } = await verifyAccessToken(token, env);
+    const body = await request.json().catch(() => ({}));
 
-    const body = await request.json();
+    const sfAuth = await getSalesforceAccessToken(env);
 
-    const sfRes = await salesforceRequest(
-      env,
-      "/services/apexrest/portal/profile",
+    const sfResp = await fetch(
+      `${sfAuth.instance_url}/services/apexrest/portal/profile`,
       {
         method: "POST",
         headers: {
+          Authorization: `Bearer ${sfAuth.access_token}`,
           "Content-Type": "application/json"
         },
         body: JSON.stringify({
@@ -30,20 +56,30 @@ export async function onRequestPost(context) {
       }
     );
 
-    const text = await sfRes.text();
+    const text = await sfResp.text();
 
     return new Response(text, {
-      status: sfRes.status,
+      status: sfResp.status,
       headers: {
         "Content-Type": "application/json"
       }
     });
   } catch (e) {
+    const message = e?.message || "Server error";
+
+    const status =
+      message === "Missing bearer token" ? 401 : 500;
+
     return new Response(
-      JSON.stringify({ ok: false, message: e.message || "Server error" }),
+      JSON.stringify({
+        ok: false,
+        message
+      }),
       {
-        status: 500,
-        headers: { "Content-Type": "application/json" }
+        status,
+        headers: {
+          "Content-Type": "application/json"
+        }
       }
     );
   }
