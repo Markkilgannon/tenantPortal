@@ -470,32 +470,65 @@ textarea {
 }
 
 .statusBadge {
-  display: inline-block;
-  padding: 6px 11px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 12px;
   border-radius: 999px;
   font-size: 12px;
   font-weight: 700;
   line-height: 1;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.statusBadge::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  flex: 0 0 auto;
 }
 
 .statusOpen {
-  background: #eef2f7;
+  background: #f3f5f8;
   color: #5f6c7b;
+  border-color: #e1e6ee;
+}
+
+.statusOpen::before {
+  background: #8a94a6;
 }
 
 .statusInProgress {
-  background: #e8f1ff;
+  background: #eaf2ff;
   color: #2f6fed;
+  border-color: #cfe0ff;
+}
+
+.statusInProgress::before {
+  background: #2f6fed;
 }
 
 .statusWaiting {
   background: #fff4e8;
   color: #d9822b;
+  border-color: #f3dcc0;
+}
+
+.statusWaiting::before {
+  background: #d9822b;
 }
 
 .statusCompleted {
-  background: #e9f8ef;
+  background: #eaf8ef;
   color: #1f9d55;
+  border-color: #cde9d8;
+}
+
+.statusCompleted::before {
+  background: #1f9d55;
 }
 
 .devPanel {
@@ -620,6 +653,7 @@ pre {
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  min-width: 160px;
 }
 
 .maintenanceUpdateBox {
