@@ -122,7 +122,15 @@
               <p>Track submitted issues and view updates.</p>
             </div>
 
-            <div id="maintenanceList" class="stackList"></div>
+<div class="maintenanceFilters" id="maintenanceFilters">
+  <button class="filterBtn active" data-filter="all">All</button>
+  <button class="filterBtn" data-filter="Open">Open</button>
+  <button class="filterBtn" data-filter="In Progress">In Progress</button>
+  <button class="filterBtn" data-filter="Waiting for Contractor">Waiting</button>
+  <button class="filterBtn" data-filter="Completed">Completed</button>
+</div>
+
+<div id="maintenanceList" class="maintenanceList"></div>
           </div>
         </div>
       </section>
