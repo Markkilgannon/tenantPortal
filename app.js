@@ -389,6 +389,74 @@ function renderHome() {
   }
 }
 
+function setAccountBanner(message = "", type = "") {
+  const banner = $("accountBanner");
+  if (!banner) return;
+
+  if (!message) {
+    banner.style.display = "none";
+    banner.className = "accountBanner";
+    banner.textContent = "";
+    return;
+  }
+
+  banner.style.display = "block";
+  banner.className = `accountBanner ${type === "error" ? "accountBannerError" : "accountBannerSuccess"}`;
+  banner.textContent = message;
+}
+
+function setFieldError(fieldId, errorId, message = "") {
+  const field = $(fieldId);
+  const error = $(errorId);
+
+  if (field) {
+    field.classList.toggle("inputError", Boolean(message));
+  }
+
+  if (error) {
+    error.textContent = message;
+  }
+}
+
+function validateAccountForm(email, phone) {
+  let valid = true;
+
+  setFieldError("accountEmail", "accountEmailError", "");
+  setFieldError("accountPhone", "accountPhoneError", "");
+
+  const trimmedEmail = String(email || "").trim();
+  const trimmedPhone = String(phone || "").trim();
+
+  if (trimmedEmail) {
+    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail);
+    if (!emailOk) {
+      setFieldError("accountEmail", "accountEmailError", "Enter a valid email address.");
+      valid = false;
+    }
+  }
+
+  if (trimmedPhone) {
+    const phoneOk = /^[0-9+()\-\s]{7,20}$/.test(trimmedPhone);
+    if (!phoneOk) {
+      setFieldError("accountPhone", "accountPhoneError", "Enter a valid phone number.");
+      valid = false;
+    }
+  }
+
+  return valid;
+}
+
+function resetAccountFormFromContext() {
+  const tenant = portalContext?.sf?.tenant || {};
+
+  if ($("accountEmail")) $("accountEmail").value = tenant.email || "";
+  if ($("accountPhone")) $("accountPhone").value = tenant.phone || "";
+
+  setFieldError("accountEmail", "accountEmailError", "");
+  setFieldError("accountPhone", "accountPhoneError", "");
+  setAccountBanner("", "");
+}
+
 function renderAccount() {
   const el = $("accountDetails");
   if (!el) return;
@@ -405,6 +473,7 @@ function renderAccount() {
 
     if ($("accountEmail")) $("accountEmail").value = "";
     if ($("accountPhone")) $("accountPhone").value = "";
+    setAccountBanner("", "");
     return;
   }
 
@@ -447,8 +516,7 @@ function renderAccount() {
     </div>
   `;
 
-  if ($("accountEmail")) $("accountEmail").value = tenant.email || "";
-  if ($("accountPhone")) $("accountPhone").value = tenant.phone || "";
+  resetAccountFormFromContext();
 }
 // -------------------------
 // Loaders
@@ -767,14 +835,21 @@ function initAccountForm() {
   on("accountForm", "submit", async (e) => {
     e.preventDefault();
 
-    const msg = $("accountMsg");
-    if (msg) msg.textContent = "Saving changes…";
+    const email = ($("accountEmail")?.value || "").trim();
+    const phone = ($("accountPhone")?.value || "").trim();
+
+    setAccountBanner("", "");
+
+    if (!validateAccountForm(email, phone)) {
+      setAccountBanner("Please fix the highlighted fields and try again.", "error");
+      setStatus("Account validation failed", "bad");
+      return;
+    }
+
+    setAccountBanner("Saving your changes…", "success");
     setStatus("Saving account details…", "warn");
 
     try {
-      const email = ($("accountEmail")?.value || "").trim();
-      const phone = ($("accountPhone")?.value || "").trim();
-
       const result = await api("/api/profile", {
         method: "POST",
         body: JSON.stringify({ email, phone })
@@ -788,13 +863,18 @@ function initAccountForm() {
       renderAccount();
       renderHome();
 
-      if (msg) msg.textContent = "Your contact details have been updated.";
+      setAccountBanner("Your contact details have been updated successfully.", "success");
       setStatus("Account updated", "ok");
     } catch (err) {
       console.error("Profile update failed:", err);
-      if (msg) msg.textContent = err?.message || "Failed to update account details.";
+      setAccountBanner(err?.message || "Failed to update account details.", "error");
       setStatus("Account update failed", "bad");
     }
+  });
+
+  on("accountResetBtn", "click", () => {
+    resetAccountFormFromContext();
+    setStatus("Account form reset", "ok");
   });
 }
 
