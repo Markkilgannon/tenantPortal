@@ -636,6 +636,40 @@ pre {
   padding: 14px;
 }
 
+.maintenanceFilters {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+
+.filterBtn {
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: 8px 14px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.filterBtn:hover {
+  background: rgba(0,0,0,0.04);
+}
+
+.filterBtn.active {
+  background: var(--primary);
+  color: white;
+  border-color: var(--primary);
+}
+
+.maintenanceList {
+  margin-top: 16px;
+  display: grid;
+  gap: 14px;
+}
+
 .detailLabel {
   margin: 0 0 8px;
   font-size: 12px;
