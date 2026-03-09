@@ -49,6 +49,8 @@ const PORTAL_ORIGIN = window.location.origin;
 // -------------------------
 let auth0Client = null;
 let isBooted = false;
+let maintenanceItemsCache = [];
+let maintenanceFilter = "all";
 
 // Cache of /api/me response (includes Salesforce context)
 let portalContext = null;
@@ -124,6 +126,26 @@ function initNav() {
     } else if (panel === "docs") {
       await loadDocs().catch(console.error);
     }
+
+    function initMaintenanceFilters() {
+  const container = $("maintenanceFilters");
+  if (!container) return;
+
+  container.addEventListener("click", (e) => {
+    const btn = e.target.closest(".filterBtn");
+    if (!btn) return;
+
+    maintenanceFilter = btn.dataset.filter;
+
+    container.querySelectorAll(".filterBtn").forEach(b => {
+      b.classList.remove("active");
+    });
+
+    btn.classList.add("active");
+
+    renderMaintenanceList();
+  });
+}
   });
 
   function groupDocuments(docs) {
@@ -575,56 +597,15 @@ async function loadMaintenance() {
   wrap.innerHTML = "";
 
   try {
-    const items = await api("/api/maintenance");
+    maintenanceItemsCache = await api("/api/maintenance");
 
     if (portalContext) {
-      portalContext.maintenancePreview = Array.isArray(items) ? items : [];
+      portalContext.maintenancePreview = Array.isArray(maintenanceItemsCache)
+        ? maintenanceItemsCache
+        : [];
     }
 
-    if (!Array.isArray(items) || !items.length) {
-      wrap.innerHTML = `
-        <div class="maintenanceCard emptyStateCard">
-          <div class="maintenanceMain">
-            <p class="itemTitle">No maintenance requests yet</p>
-            <p class="itemMeta">When you submit a request, it will appear here with its latest status and updates.</p>
-          </div>
-        </div>
-      `;
-      setStatus("Maintenance ready", "ok");
-      return;
-    }
-
-    items.forEach((i) => {
-      const el = document.createElement("div");
-      el.className = "maintenanceCard";
-
-      el.innerHTML = `
-        <div class="maintenanceHeader">
-          <div class="maintenanceMain">
-            <p class="itemTitle">${escapeHtml(i.subject || "(No subject)")}</p>
-            <p class="itemMeta">Submitted: ${escapeHtml(safeDate(i.createdDate))}</p>
-          </div>
-          <div class="maintenanceSide">
-            <span class="${statusClass(i.status)}">${escapeHtml(i.status || "Open")}</span>
-          </div>
-        </div>
-
-        ${i.portalUpdate ? `
-          <div class="maintenanceUpdateBox">
-            <p class="detailLabel">Latest update</p>
-            <p class="itemMeta">${escapeHtml(i.portalUpdate)}</p>
-          </div>
-        ` : ""}
-
-        <div class="maintenanceDescription">
-          <p class="detailLabel">Description</p>
-          <p class="itemMeta">${escapeHtml(i.description || "No description provided.")}</p>
-        </div>
-      `;
-
-      wrap.appendChild(el);
-    });
-
+    renderMaintenanceList();
     setStatus("Maintenance ready", "ok");
   } catch (e) {
     console.error("Maintenance list unavailable:", e);
@@ -638,6 +619,62 @@ async function loadMaintenance() {
     `;
     setStatus("Maintenance ready", "warn");
   }
+}
+
+function renderMaintenanceList() {
+  const wrap = $("maintenanceList");
+  if (!wrap) return;
+
+  wrap.innerHTML = "";
+
+  let items = Array.isArray(maintenanceItemsCache) ? maintenanceItemsCache : [];
+
+  if (maintenanceFilter !== "all") {
+    items = items.filter((i) => i.status === maintenanceFilter);
+  }
+
+  if (!items.length) {
+    wrap.innerHTML = `
+      <div class="maintenanceCard emptyStateCard">
+        <div class="maintenanceMain">
+          <p class="itemTitle">No maintenance requests found</p>
+          <p class="itemMeta">There are no requests for the selected filter.</p>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  items.forEach((i) => {
+    const el = document.createElement("div");
+    el.className = "maintenanceCard";
+
+    el.innerHTML = `
+      <div class="maintenanceHeader">
+        <div class="maintenanceMain">
+          <p class="itemTitle">${escapeHtml(i.subject || "(No subject)")}</p>
+          <p class="itemMeta">Submitted: ${escapeHtml(safeDate(i.createdDate))}</p>
+        </div>
+        <div class="maintenanceSide">
+          <span class="${statusClass(i.status)}">${escapeHtml(i.status || "Open")}</span>
+        </div>
+      </div>
+
+      ${i.portalUpdate ? `
+        <div class="maintenanceUpdateBox">
+          <p class="detailLabel">Latest update</p>
+          <p class="itemMeta">${escapeHtml(i.portalUpdate)}</p>
+        </div>
+      ` : ""}
+
+      <div class="maintenanceDescription">
+        <p class="detailLabel">Description</p>
+        <p class="itemMeta">${escapeHtml(i.description || "No description provided.")}</p>
+      </div>
+    `;
+
+    wrap.appendChild(el);
+  });
 }
 async function loadDocs() {
   const wrap = $("docsList");
@@ -943,6 +980,7 @@ async function boot() {
   initNav();
   initMaintenanceForm();
   initAccountForm();
+  initMaintenanceFilters();
   initAuthButtons();
 
   setStatus("Initialising auth…", "warn");
