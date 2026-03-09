@@ -586,6 +586,7 @@ async function loadMaintenance() {
         : [];
     }
 
+    updateMaintenanceFilterCounts();
     renderMaintenanceList();
     setStatus("Maintenance ready", "ok");
   } catch (e) {
@@ -602,6 +603,49 @@ async function loadMaintenance() {
   }
 }
 
+function updateMaintenanceFilterCounts() {
+  const container = $("maintenanceFilters");
+  if (!container) return;
+
+  const items = Array.isArray(maintenanceItemsCache) ? maintenanceItemsCache : [];
+
+  const counts = {
+    all: items.length,
+    Open: 0,
+    "In Progress": 0,
+    "Waiting for Contractor": 0,
+    Completed: 0
+  };
+
+  items.forEach((item) => {
+    const status = item?.status;
+    if (Object.prototype.hasOwnProperty.call(counts, status)) {
+      counts[status] += 1;
+    }
+  });
+
+  container.querySelectorAll(".filterBtn").forEach((btn) => {
+    const filter = btn.dataset.filter;
+    let label = "";
+
+    if (filter === "all") {
+      label = `All (${counts.all})`;
+    } else if (filter === "Open") {
+      label = `Open (${counts.Open})`;
+    } else if (filter === "In Progress") {
+      label = `In Progress (${counts["In Progress"]})`;
+    } else if (filter === "Waiting for Contractor") {
+      label = `Waiting (${counts["Waiting for Contractor"]})`;
+    } else if (filter === "Completed") {
+      label = `Completed (${counts.Completed})`;
+    } else {
+      label = filter;
+    }
+
+    btn.textContent = label;
+  });
+}
+
 function renderMaintenanceList() {
   const wrap = $("maintenanceList");
   if (!wrap) return;
@@ -609,6 +653,8 @@ function renderMaintenanceList() {
   wrap.innerHTML = "";
 
   let items = Array.isArray(maintenanceItemsCache) ? maintenanceItemsCache : [];
+  updateMaintenanceFilterCounts();
+
 
   if (maintenanceFilter !== "all") {
     items = items.filter((i) => i.status === maintenanceFilter);
