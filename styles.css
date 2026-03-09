@@ -845,6 +845,53 @@ pre {
   box-shadow: var(--shadow);
 }
 
+.accountFormGrid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 1fr 1fr;
+}
+
+.accountBanner {
+  margin-bottom: 16px;
+  border-radius: 14px;
+  padding: 14px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 1.5;
+  border: 1px solid transparent;
+}
+
+.accountBannerSuccess {
+  background: #e9f8ef;
+  border-color: #cfead9;
+  color: #1f7a47;
+}
+
+.accountBannerError {
+  background: #fdeeee;
+  border-color: #f3cccc;
+  color: #b54747;
+}
+
+.fieldError {
+  margin: 8px 0 0;
+  min-height: 18px;
+  font-size: 13px;
+  color: #c94b4b;
+  line-height: 1.4;
+}
+
+.inputError {
+  border-color: #e6a3a3 !important;
+  box-shadow: 0 0 0 4px rgba(201, 75, 75, 0.08) !important;
+}
+
+@media (max-width: 900px) {
+  .accountFormGrid {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 900px) {
   .accountGrid {
     grid-template-columns: 1fr;
