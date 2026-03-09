@@ -388,6 +388,62 @@ function renderHome() {
     });
   }
 }
+
+function renderAccount() {
+  const el = $("accountDetails");
+  if (!el) return;
+
+  const ctx = portalContext?.sf?.ok !== false ? portalContext.sf : null;
+
+  if (!ctx) {
+    el.innerHTML = `
+      <div class="itemCard">
+        <p class="itemTitle">Account</p>
+        <p class="itemMeta">Login to view your profile details.</p>
+      </div>
+    `;
+    return;
+  }
+
+  const tenant = ctx.tenant || {};
+  const unit = ctx.unit || {};
+  const lease = ctx.lease || {};
+  const tenancy = ctx.tenancy || {};
+
+  el.innerHTML = `
+    <div class="accountFieldCard">
+      <p class="accountFieldLabel">Full name</p>
+      <p class="accountFieldValue">${escapeHtml(tenant.name || "—")}</p>
+    </div>
+
+    <div class="accountFieldCard">
+      <p class="accountFieldLabel">Email</p>
+      <p class="accountFieldValue">${escapeHtml(tenant.email || "—")}</p>
+    </div>
+
+    <div class="accountFieldCard">
+      <p class="accountFieldLabel">Phone</p>
+      <p class="accountFieldValue">${escapeHtml(tenant.phone || "—")}</p>
+    </div>
+
+    <div class="accountFieldCard">
+      <p class="accountFieldLabel">Property</p>
+      <p class="accountFieldValue">${escapeHtml(unit.propertyName || "—")}</p>
+      <p class="accountFieldSubvalue">Unit: ${escapeHtml(unit.name || "—")}</p>
+    </div>
+
+    <div class="accountFieldCard">
+      <p class="accountFieldLabel">Lease</p>
+      <p class="accountFieldValue">${escapeHtml(lease.name || "—")}</p>
+      <p class="accountFieldSubvalue">${escapeHtml(lease.startDate || "?")} → ${escapeHtml(lease.endDate || "?")}</p>
+    </div>
+
+    <div class="accountFieldCard">
+      <p class="accountFieldLabel">Tenancy status</p>
+      <p class="accountFieldValue">${escapeHtml(tenancy.status || "—")}</p>
+    </div>
+  `;
+}
 // -------------------------
 // Loaders
 // -------------------------
@@ -406,6 +462,7 @@ async function loadMe() {
 
   // Render dashboard cards
   renderHome();
+  renderAccount();
 
   try {
   const [maintenancePreview, docsPreview] = await Promise.all([
@@ -419,6 +476,8 @@ async function loadMe() {
 } catch (e) {
   console.error("Preview load failed:", e);
 }
+
+  renderAccount();
 
   // Debug output
   setText("output", JSON.stringify(me, null, 2));
