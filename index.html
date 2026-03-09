@@ -37,6 +37,11 @@
     <span class="navIcon">📄</span>
     <span>Documents</span>
   </button>
+          
+  <button class="navItem tabBtn" data-panel="account" type="button">
+  <span class="navIcon">👤</span>
+  <span>Account</span>
+</button>
 </nav>
 
       <div class="sidebarSection sidebarProperty">
@@ -134,6 +139,22 @@
         </div>
       </section>
 
+      <section id="panel-account" class="panel">
+  <div class="contentCard">
+    <div class="sectionHeader">
+      <h3>Account</h3>
+      <p>View your profile and tenancy details.</p>
+    </div>
+
+    <div id="accountDetails" class="accountGrid">
+      <div class="itemCard">
+        <p class="itemTitle">Profile</p>
+        <p class="itemMeta">Your account details will appear here.</p>
+      </div>
+    </div>
+  </div>
+</section>
+      
       <!-- Hidden dev hook so existing JS doesn't break -->
       <section class="devPanel">
         <pre id="output" aria-live="polite">{ "hint": "Login to load your dashboard" }</pre>
