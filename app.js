@@ -402,6 +402,9 @@ function renderAccount() {
         <p class="itemMeta">Login to view your profile details.</p>
       </div>
     `;
+
+    if ($("accountEmail")) $("accountEmail").value = "";
+    if ($("accountPhone")) $("accountPhone").value = "";
     return;
   }
 
@@ -443,6 +446,9 @@ function renderAccount() {
       <p class="accountFieldValue">${escapeHtml(tenancy.status || "—")}</p>
     </div>
   `;
+
+  if ($("accountEmail")) $("accountEmail").value = tenant.email || "";
+  if ($("accountPhone")) $("accountPhone").value = tenant.phone || "";
 }
 // -------------------------
 // Loaders
@@ -755,6 +761,43 @@ function initMaintenanceForm() {
   });
 }
 
+function initAccountForm() {
+  if (!has("accountForm")) return;
+
+  on("accountForm", "submit", async (e) => {
+    e.preventDefault();
+
+    const msg = $("accountMsg");
+    if (msg) msg.textContent = "Saving changes…";
+    setStatus("Saving account details…", "warn");
+
+    try {
+      const email = ($("accountEmail")?.value || "").trim();
+      const phone = ($("accountPhone")?.value || "").trim();
+
+      const result = await api("/api/profile", {
+        method: "POST",
+        body: JSON.stringify({ email, phone })
+      });
+
+      if (portalContext?.sf?.tenant) {
+        portalContext.sf.tenant.email = result.email || "";
+        portalContext.sf.tenant.phone = result.phone || "";
+      }
+
+      renderAccount();
+      renderHome();
+
+      if (msg) msg.textContent = "Your contact details have been updated.";
+      setStatus("Account updated", "ok");
+    } catch (err) {
+      console.error("Profile update failed:", err);
+      if (msg) msg.textContent = err?.message || "Failed to update account details.";
+      setStatus("Account update failed", "bad");
+    }
+  });
+}
+
 // -------------------------
 // Auth UI wiring
 // -------------------------
@@ -819,6 +862,7 @@ async function boot() {
 
   initNav();
   initMaintenanceForm();
+  initAccountForm();
   initAuthButtons();
 
   setStatus("Initialising auth…", "warn");
