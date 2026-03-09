@@ -143,7 +143,7 @@
   <div class="contentCard">
     <div class="sectionHeader">
       <h3>Account</h3>
-      <p>View and update your contact details.</p>
+      <p>View your profile and keep your contact details up to date.</p>
     </div>
 
     <div id="accountDetails" class="accountGrid"></div>
@@ -151,21 +151,30 @@
     <div class="accountEditCard">
       <div class="sectionHeader">
         <h3>Update contact details</h3>
-        <p>Keep your contact information up to date.</p>
+        <p>These details help your landlord or property manager contact you when needed.</p>
       </div>
 
-      <form id="accountForm">
-        <label for="accountEmail">Email</label>
-        <input id="accountEmail" name="accountEmail" type="email" placeholder="Enter your email" />
+      <div id="accountBanner" class="accountBanner" style="display:none;"></div>
 
-        <label for="accountPhone">Phone</label>
-        <input id="accountPhone" name="accountPhone" type="text" placeholder="Enter your phone number" />
+      <form id="accountForm" novalidate>
+        <div class="accountFormGrid">
+          <div>
+            <label for="accountEmail">Email</label>
+            <input id="accountEmail" name="accountEmail" type="email" placeholder="Enter your email" />
+            <p class="fieldError" id="accountEmailError"></p>
+          </div>
+
+          <div>
+            <label for="accountPhone">Phone</label>
+            <input id="accountPhone" name="accountPhone" type="text" placeholder="Enter your phone number" />
+            <p class="fieldError" id="accountPhoneError"></p>
+          </div>
+        </div>
 
         <div class="formActions">
           <button class="btn btn-primary" type="submit">Save changes</button>
+          <button class="btn btn-secondary" type="button" id="accountResetBtn">Reset</button>
         </div>
-
-        <p class="formMessage" id="accountMsg"></p>
       </form>
     </div>
   </div>
