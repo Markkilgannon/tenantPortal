@@ -51,6 +51,7 @@ let auth0Client = null;
 let isBooted = false;
 let maintenanceItemsCache = [];
 let maintenanceFilter = "all";
+let announcementsCache = [];
 
 // Cache of /api/me response (includes Salesforce context)
 let portalContext = null;
@@ -267,6 +268,26 @@ async function api(path, opts = {}) {
   return data;
 }
 
+function announcementPriorityClass(priority) {
+  const p = String(priority || "").toLowerCase().trim();
+
+  if (p === "urgent") return "announcementBadge announcementUrgent";
+  if (p === "high") return "announcementBadge announcementHigh";
+  if (p === "normal") return "announcementBadge announcementNormal";
+  if (p === "low") return "announcementBadge announcementLow";
+
+  return "announcementBadge announcementNormal";
+}
+
+function formatAnnouncementWindow(startDateTime, endDateTime) {
+  const start = startDateTime ? safeDate(startDateTime) : "";
+  const end = endDateTime ? safeDate(endDateTime) : "";
+
+  if (start && end) return `${start} → ${end}`;
+  if (start) return `Starts: ${start}`;
+  if (end) return `Until: ${end}`;
+  return "";
+}
 // -------------------------
 // Home dashboard renderer
 // -------------------------
@@ -300,7 +321,32 @@ function renderHome() {
     ? portalContext.docsPreview
     : [];
 
+  const announcements = Array.isArray(announcementsCache)
+    ? announcementsCache.slice(0, 3)
+    : [];
+
   const latestMaintenance = maintenanceItems.length ? maintenanceItems[0] : null;
+
+  const announcementsHtml = announcements.length
+    ? announcements.map((a) => `
+        <div class="announcementItem">
+          <div class="announcementTopRow">
+            <p class="announcementTitle">${escapeHtml(a.title || "Announcement")}</p>
+            ${a.priority ? `<span class="${announcementPriorityClass(a.priority)}">${escapeHtml(a.priority)}</span>` : ""}
+          </div>
+          ${a.startDateTime || a.endDateTime ? `
+            <p class="announcementMeta">
+              ${escapeHtml(formatAnnouncementWindow(a.startDateTime, a.endDateTime))}
+            </p>
+          ` : ""}
+          <p class="announcementText">${escapeHtml(a.message || "")}</p>
+        </div>
+      `).join("")
+    : `
+      <div class="announcementEmpty">
+        <p class="cardText">There are no active announcements right now.</p>
+      </div>
+    `;
 
   el.innerHTML = `
     <div class="summaryCard">
@@ -372,6 +418,14 @@ function renderHome() {
             <p class="cardText">Your latest maintenance updates will appear here.</p>
           `
       }
+    </div>
+
+    <div class="dashboardCard dashboardCardWide">
+      <p class="cardLabel">Announcements</p>
+      <p class="cardTitle">Property notices</p>
+      <div class="announcementsList">
+        ${announcementsHtml}
+      </div>
     </div>
   `;
 
@@ -542,17 +596,20 @@ async function loadMe() {
   renderAccount();
 
   try {
-  const [maintenancePreview, docsPreview] = await Promise.all([
-    api("/api/maintenance").catch(() => []),
-    api("/api/docs").catch(() => [])
-  ]);
+    const [maintenancePreview, docsPreview, announcementsPreview] = await Promise.all([
+      api("/api/maintenance").catch(() => []),
+      api("/api/docs").catch(() => []),
+      api("/api/announcements").catch(() => [])
+    ]);
 
-  portalContext.maintenancePreview = Array.isArray(maintenancePreview) ? maintenancePreview : [];
-  portalContext.docsPreview = Array.isArray(docsPreview) ? docsPreview : [];
-  renderHome();
-} catch (e) {
-  console.error("Preview load failed:", e);
-}
+    portalContext.maintenancePreview = Array.isArray(maintenancePreview) ? maintenancePreview : [];
+    portalContext.docsPreview = Array.isArray(docsPreview) ? docsPreview : [];
+    announcementsCache = Array.isArray(announcementsPreview) ? announcementsPreview : [];
+
+    renderHome();
+  } catch (e) {
+    console.error("Preview load failed:", e);
+  }
 
   renderAccount();
 
@@ -842,6 +899,18 @@ async function downloadDocument(doc) {
     console.error("Download failed:", e);
     setStatus("Download failed", "bad");
     alert("Failed to download document.");
+  }
+}
+
+async function loadAnnouncements() {
+  try {
+    const items = await api("/api/announcements");
+    announcementsCache = Array.isArray(items) ? items : [];
+    return announcementsCache;
+  } catch (e) {
+    console.error("Announcements unavailable:", e);
+    announcementsCache = [];
+    return [];
   }
 }
 
