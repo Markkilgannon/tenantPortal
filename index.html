@@ -7,8 +7,27 @@
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
+  <div id="guestScreen" class="guest-screen">
+    <div class="guest-screen__card">
+      <div class="brand guest-screen__brand">
+        <div class="brand__mark">TP</div>
+        <div class="brand__text">
+          <div class="brand__name">Tenant Portal</div>
+          <div class="brand__sub">Property Console</div>
+        </div>
+      </div>
+
+      <h1 class="guest-screen__title">Welcome to your tenant portal</h1>
+      <p class="guest-screen__text">
+        Log in securely to view your tenancy details, submit maintenance requests,
+        download documents, and see property announcements.
+      </p>
+
+      <button id="loginBtn" class="topbar-action">Log in</button>
+    </div>
+  </div>
+
   <div id="app" class="app-shell hidden">
-    <!-- Sidebar -->
     <aside class="sidebar">
       <div class="sidebar__top">
         <div class="brand">
@@ -21,27 +40,27 @@
       </div>
 
       <nav class="sidebar__nav">
-        <button class="nav-item active" data-view="home">
+        <button class="nav-item active" data-view="home" type="button">
           <span class="nav-item__icon">⌂</span>
           <span>Home</span>
         </button>
 
-        <button class="nav-item" data-view="maintenance">
+        <button class="nav-item" data-view="maintenance" type="button">
           <span class="nav-item__icon">🛠</span>
           <span>Maintenance</span>
         </button>
 
-        <button class="nav-item" data-view="documents">
+        <button class="nav-item" data-view="documents" type="button">
           <span class="nav-item__icon">📄</span>
           <span>Documents</span>
         </button>
 
-        <button class="nav-item" data-view="announcements">
+        <button class="nav-item" data-view="announcements" type="button">
           <span class="nav-item__icon">🔔</span>
           <span>Announcements</span>
         </button>
 
-        <button class="nav-item" data-view="profile">
+        <button class="nav-item" data-view="profile" type="button">
           <span class="nav-item__icon">👤</span>
           <span>Profile</span>
         </button>
@@ -54,15 +73,14 @@
           <div class="tenant-mini-card__meta" id="sidebarUnitName">Unit —</div>
         </div>
 
-        <button id="logoutBtn" class="sidebar__logout">Log out</button>
+        <button id="logoutBtn" class="sidebar__logout" type="button">Log out</button>
       </div>
     </aside>
 
-    <!-- Main -->
     <div class="main-shell">
       <header class="topbar">
         <div class="topbar__left">
-          <button class="mobile-nav-toggle" id="mobileNavToggle">☰</button>
+          <button class="mobile-nav-toggle" id="mobileNavToggle" type="button">☰</button>
           <div>
             <h1 class="page-title" id="pageTitle">Dashboard</h1>
             <p class="page-subtitle" id="pageSubtitle">Overview of your tenancy and latest activity</p>
@@ -70,9 +88,15 @@
         </div>
 
         <div class="topbar__right">
-          <button class="topbar-action" id="quickMaintenanceBtn">New Request</button>
+          <div class="topbar-status">
+            <span class="topbar-status__dot" id="globalStatusDot"></span>
+            <span id="globalStatusText">Starting…</span>
+          </div>
+
+          <button class="topbar-action" id="quickMaintenanceBtn" type="button">New Request</button>
+
           <div class="topbar-profile">
-            <div class="topbar-profile__avatar" id="profileInitials">MK</div>
+            <div class="topbar-profile__avatar" id="profileInitials">TP</div>
             <div class="topbar-profile__meta">
               <div class="topbar-profile__name" id="profileNameTop">Tenant</div>
               <div class="topbar-profile__email" id="profileEmailTop">tenant@email.com</div>
@@ -82,7 +106,6 @@
       </header>
 
       <main class="content">
-        <!-- Home -->
         <section class="view active" id="view-home">
           <div class="summary-grid">
             <div class="metric-card">
@@ -117,7 +140,7 @@
                   <h2 class="panel__title">Recent maintenance</h2>
                   <p class="panel__subtitle">Latest requests and status updates</p>
                 </div>
-                <button class="panel__action" data-view-link="maintenance">View all</button>
+                <button class="panel__action" data-view-link="maintenance" type="button">View all</button>
               </div>
               <div id="recentMaintenanceList" class="stack-list"></div>
             </section>
@@ -128,7 +151,7 @@
                   <h2 class="panel__title">Announcements</h2>
                   <p class="panel__subtitle">Important property updates</p>
                 </div>
-                <button class="panel__action" data-view-link="announcements">Open</button>
+                <button class="panel__action" data-view-link="announcements" type="button">Open</button>
               </div>
               <div id="homeAnnouncements" class="stack-list"></div>
             </section>
@@ -158,26 +181,25 @@
                 </div>
               </div>
               <div class="action-grid">
-                <button class="quick-action" id="qaMaintenance">Submit maintenance</button>
-                <button class="quick-action" id="qaDocuments">Open documents</button>
-                <button class="quick-action" id="qaAnnouncements">View announcements</button>
-                <button class="quick-action" id="qaProfile">Update profile</button>
+                <button class="quick-action" id="qaMaintenance" type="button">Submit maintenance</button>
+                <button class="quick-action" id="qaDocuments" type="button">Open documents</button>
+                <button class="quick-action" id="qaAnnouncements" type="button">View announcements</button>
+                <button class="quick-action" id="qaProfile" type="button">Update profile</button>
               </div>
             </section>
           </div>
         </section>
 
-        <!-- Maintenance -->
         <section class="view" id="view-maintenance">
           <div class="toolbar">
             <div class="toolbar__group">
-              <button class="filter-chip active" data-maintenance-filter="all">All</button>
-              <button class="filter-chip" data-maintenance-filter="open">Open</button>
-              <button class="filter-chip" data-maintenance-filter="in progress">In Progress</button>
-              <button class="filter-chip" data-maintenance-filter="waiting for contractor">Waiting</button>
-              <button class="filter-chip" data-maintenance-filter="completed">Completed</button>
+              <button class="filter-chip active" data-maintenance-filter="all" type="button">All</button>
+              <button class="filter-chip" data-maintenance-filter="open" type="button">Open</button>
+              <button class="filter-chip" data-maintenance-filter="in progress" type="button">In Progress</button>
+              <button class="filter-chip" data-maintenance-filter="waiting for contractor" type="button">Waiting</button>
+              <button class="filter-chip" data-maintenance-filter="completed" type="button">Completed</button>
             </div>
-            <button class="topbar-action" id="maintenanceCreateBtn">New request</button>
+            <button class="topbar-action" id="maintenanceCreateBtn" type="button">New request</button>
           </div>
 
           <section class="panel">
@@ -191,7 +213,6 @@
           </section>
         </section>
 
-        <!-- Documents -->
         <section class="view" id="view-documents">
           <section class="panel">
             <div class="panel__header">
@@ -204,7 +225,6 @@
           </section>
         </section>
 
-        <!-- Announcements -->
         <section class="view" id="view-announcements">
           <section class="panel">
             <div class="panel__header">
@@ -217,7 +237,6 @@
           </section>
         </section>
 
-        <!-- Profile -->
         <section class="view" id="view-profile">
           <section class="panel panel--form">
             <div class="panel__header">
@@ -241,6 +260,8 @@
               <div class="form-actions">
                 <button type="submit" class="topbar-action">Save changes</button>
               </div>
+
+              <div id="profileMessage" class="form-message" style="display:none;"></div>
             </form>
           </section>
         </section>
@@ -248,10 +269,74 @@
     </div>
   </div>
 
-  <div id="authLoading" class="auth-loading">
+  <div id="authLoading" class="auth-loading hidden">
     <div class="auth-loading__card">
       <div class="auth-loading__spinner"></div>
       <div class="auth-loading__text">Loading portal...</div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast">
+    <span id="toastText"></span>
+  </div>
+
+  <div id="maintenanceModal" class="modal">
+    <div class="modal__dialog">
+      <div class="panel__header">
+        <div>
+          <h2 class="panel__title">Submit maintenance request</h2>
+          <p class="panel__subtitle">Tell us what needs attention</p>
+        </div>
+        <button class="panel__action" type="button" data-close-modal="maintenanceModal">Close</button>
+      </div>
+
+      <form id="maintenanceForm" class="form-grid">
+        <div class="field" style="grid-column: 1 / -1;">
+          <label for="subject">Subject</label>
+          <input id="subject" name="subject" type="text" />
+        </div>
+
+        <div class="field" style="grid-column: 1 / -1;">
+          <label for="description">Description</label>
+          <textarea id="description" name="description" rows="5"></textarea>
+        </div>
+
+        <div class="field" style="grid-column: 1 / -1;">
+          <label for="photos">Photos</label>
+          <input id="photos" name="photos" type="file" accept="image/jpeg,image/png,image/webp" multiple />
+        </div>
+
+        <div class="form-actions">
+          <button type="submit" class="topbar-action">Submit request</button>
+        </div>
+
+        <div id="maintenanceMsg" class="form-message" style="display:none;"></div>
+      </form>
+    </div>
+  </div>
+
+  <div id="maintenanceDetailModal" class="modal">
+    <div class="modal__dialog">
+      <div class="panel__header">
+        <div>
+          <h2 class="panel__title" id="maintenanceDetailTitle">Maintenance request</h2>
+          <p class="panel__subtitle">Request details</p>
+        </div>
+        <button class="panel__action" type="button" data-close-modal="maintenanceDetailModal">Close</button>
+      </div>
+
+      <div class="detail-list">
+        <div class="detail-row"><span>Status</span><strong id="maintenanceDetailStatus">—</strong></div>
+        <div class="detail-row"><span>Submitted</span><strong id="maintenanceDetailSubmitted">—</strong></div>
+        <div class="detail-row detail-row--stack">
+          <span>Description</span>
+          <strong id="maintenanceDetailDescription">—</strong>
+        </div>
+        <div class="detail-row detail-row--stack">
+          <span>Latest update</span>
+          <strong id="maintenanceDetailUpdate">—</strong>
+        </div>
+      </div>
     </div>
   </div>
 
