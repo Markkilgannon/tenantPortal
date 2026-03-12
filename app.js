@@ -843,13 +843,11 @@ function initMaintenanceForm() {
         body: JSON.stringify({ subject, description, photos })
       });
 
-      setMaintenanceMessage("Submitted successfully. We’ll reach out if we need more information.", "ok");
       $("maintenanceForm")?.reset();
-
-      await loadMaintenance();
-      closeMaintenanceModal();
-      showToast("Maintenance request submitted.", "ok");
-      setStatus("Submitted", "ok");
+await loadMaintenance();
+closeMaintenanceModal();
+showToast("Maintenance request submitted.", "ok");
+setStatus("Submitted", "ok");
     } catch (err) {
       console.error(err);
       setMaintenanceMessage(err?.message || "Something went wrong.", "bad");
