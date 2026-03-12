@@ -1,8 +1,8 @@
 /**
  * Tenant Portal (Cloudflare Pages)
- * - Auth0 SPA login (Auth0 SPA SDK v2)
+ * - Auth0 SPA login
  * - Calls Pages Functions (/api/*) with Bearer token
- * - Stripe-style shell with sidebar navigation
+ * - Stripe-style shell with UX polish
  */
 
 // -------------------------
@@ -30,6 +30,7 @@ const AUTH0_DOMAIN = "dev-v3g60bdgfjg7walx.us.auth0.com";
 const AUTH0_CLIENT_ID = "CXrASdTRNQKhDuJIFNvIR7wPwjAwjtCx";
 const AUTH0_AUDIENCE = "https://tenant-portal-api";
 const PORTAL_ORIGIN = window.location.origin;
+const LAST_VIEW_KEY = "tenant-portal:last-view";
 
 // -------------------------
 // State
@@ -94,9 +95,7 @@ function getInitials(name) {
 
 function setStatus(message, kind = "info") {
   const label = $("globalStatusText");
-  if (label) {
-    label.textContent = String(message || "");
-  }
+  if (label) label.textContent = String(message || "");
 
   const dot = $("globalStatusDot");
   if (!dot) return;
@@ -117,6 +116,7 @@ function showToast(message, kind = "info") {
 
   toastText.textContent = String(message || "");
   toast.classList.remove("toast--info", "toast--success", "toast--error");
+
   if (kind === "ok") {
     toast.classList.add("toast--success");
   } else if (kind === "bad") {
@@ -146,13 +146,9 @@ function setProfileMessage(message = "", kind = "info") {
   }
 
   el.style.display = "block";
-  if (kind === "ok") {
-    el.classList.add("form-message--success");
-  } else if (kind === "bad") {
-    el.classList.add("form-message--error");
-  } else {
-    el.classList.add("form-message--info");
-  }
+  if (kind === "ok") el.classList.add("form-message--success");
+  else if (kind === "bad") el.classList.add("form-message--error");
+  else el.classList.add("form-message--info");
 }
 
 function setMaintenanceMessage(message = "", kind = "info") {
@@ -168,13 +164,9 @@ function setMaintenanceMessage(message = "", kind = "info") {
   }
 
   el.style.display = "block";
-  if (kind === "ok") {
-    el.classList.add("form-message--success");
-  } else if (kind === "bad") {
-    el.classList.add("form-message--error");
-  } else {
-    el.classList.add("form-message--info");
-  }
+  if (kind === "ok") el.classList.add("form-message--success");
+  else if (kind === "bad") el.classList.add("form-message--error");
+  else el.classList.add("form-message--info");
 }
 
 function validateEmail(email) {
@@ -185,6 +177,34 @@ function validateEmail(email) {
 function validatePhone(phone) {
   if (!phone) return true;
   return /^[0-9+()\-\s]{7,20}$/.test(phone);
+}
+
+function saveLastView(viewName) {
+  try {
+    localStorage.setItem(LAST_VIEW_KEY, viewName);
+  } catch {}
+}
+
+function getLastView() {
+  try {
+    return localStorage.getItem(LAST_VIEW_KEY) || "home";
+  } catch {
+    return "home";
+  }
+}
+
+function scrollToTopSmooth() {
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function closeMobileSidebar() {
+  document.querySelector(".sidebar")?.classList.remove("is-open");
+  $("mobileSidebarOverlay")?.classList.remove("is-visible");
+}
+
+function openMobileSidebar() {
+  document.querySelector(".sidebar")?.classList.add("is-open");
+  $("mobileSidebarOverlay")?.classList.add("is-visible");
 }
 
 // -------------------------
@@ -213,7 +233,7 @@ const pageMeta = {
   }
 };
 
-function setActiveView(viewName) {
+function setActiveView(viewName, options = {}) {
   document.querySelectorAll(".view").forEach((view) => {
     view.classList.toggle("active", view.id === `view-${viewName}`);
   });
@@ -226,58 +246,62 @@ function setActiveView(viewName) {
   setText("pageTitle", meta.title);
   setText("pageSubtitle", meta.subtitle);
 
-  const sidebar = document.querySelector(".sidebar");
-  if (sidebar) sidebar.classList.remove("is-open");
+  closeMobileSidebar();
+  saveLastView(viewName);
+
+  if (!options.skipScroll) {
+    scrollToTopSmooth();
+  }
+}
+
+async function openViewAndLoad(viewName) {
+  setActiveView(viewName);
+
+  if (viewName === "maintenance") {
+    await loadMaintenance();
+  } else if (viewName === "documents") {
+    await loadDocuments();
+  } else if (viewName === "announcements") {
+    await loadAnnouncementsAndRender();
+  }
 }
 
 function initNavigation() {
   document.querySelectorAll(".nav-item").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      const view = btn.dataset.view;
-      setActiveView(view);
-
-      if (view === "maintenance") {
-        await loadMaintenance();
-      } else if (view === "documents") {
-        await loadDocuments();
-      } else if (view === "announcements") {
-        await loadAnnouncementsAndRender();
-      }
+      await openViewAndLoad(btn.dataset.view);
     });
   });
 
   document.querySelectorAll("[data-view-link]").forEach((btn) => {
     btn.addEventListener("click", async () => {
-      const view = btn.dataset.viewLink;
-      setActiveView(view);
-
-      if (view === "maintenance") {
-        await loadMaintenance();
-      } else if (view === "documents") {
-        await loadDocuments();
-      } else if (view === "announcements") {
-        await loadAnnouncementsAndRender();
-      }
+      await openViewAndLoad(btn.dataset.viewLink);
     });
   });
 
   on("mobileNavToggle", "click", () => {
-    document.querySelector(".sidebar")?.classList.toggle("is-open");
+    const sidebar = document.querySelector(".sidebar");
+    if (sidebar?.classList.contains("is-open")) {
+      closeMobileSidebar();
+    } else {
+      openMobileSidebar();
+    }
+  });
+
+  on("mobileSidebarOverlay", "click", () => {
+    closeMobileSidebar();
   });
 
   on("qaMaintenance", "click", async () => {
-    setActiveView("maintenance");
-    await loadMaintenance();
+    await openViewAndLoad("maintenance");
   });
 
   on("qaDocuments", "click", async () => {
-    setActiveView("documents");
-    await loadDocuments();
+    await openViewAndLoad("documents");
   });
 
   on("qaAnnouncements", "click", async () => {
-    setActiveView("announcements");
-    await loadAnnouncementsAndRender();
+    await openViewAndLoad("announcements");
   });
 
   on("qaProfile", "click", () => {
@@ -469,6 +493,71 @@ function updateDashboardMetrics() {
   setText("metricDocuments", documentsCache.length);
 }
 
+function renderHomeCallout() {
+  const container = $("homeCallout");
+  if (!container) return;
+
+  const urgentAnnouncement = announcementsCache.find((item) => {
+    const p = String(item.priority || "").toLowerCase();
+    return p === "urgent" || p === "high";
+  });
+
+  const openCount = maintenanceItemsCache.filter(
+    (item) => (item.status || "").toLowerCase() !== "completed"
+  ).length;
+
+  if (urgentAnnouncement) {
+    container.innerHTML = `
+      <div class="callout-card callout-card--priority">
+        <div class="callout-card__label">Priority announcement</div>
+        <h3 class="callout-card__title">${escapeHtml(urgentAnnouncement.title || "Important notice")}</h3>
+        <p class="callout-card__text">${escapeHtml(urgentAnnouncement.message || "")}</p>
+        <div class="callout-card__actions">
+          <button class="topbar-action" type="button" id="calloutViewAnnouncements">View announcements</button>
+        </div>
+      </div>
+    `;
+
+    on("calloutViewAnnouncements", "click", async () => {
+      await openViewAndLoad("announcements");
+    });
+    return;
+  }
+
+  if (openCount > 0) {
+    container.innerHTML = `
+      <div class="callout-card">
+        <div class="callout-card__label">Active maintenance</div>
+        <h3 class="callout-card__title">You have ${openCount} open request${openCount === 1 ? "" : "s"}</h3>
+        <p class="callout-card__text">Review the latest status updates and track what is still in progress.</p>
+        <div class="callout-card__actions">
+          <button class="topbar-action" type="button" id="calloutViewMaintenance">View active requests</button>
+        </div>
+      </div>
+    `;
+
+    on("calloutViewMaintenance", "click", async () => {
+      await openViewAndLoad("maintenance");
+    });
+    return;
+  }
+
+  container.innerHTML = `
+    <div class="callout-card">
+      <div class="callout-card__label">Get started</div>
+      <h3 class="callout-card__title">Need help in your property?</h3>
+      <p class="callout-card__text">Submit a maintenance request and your property team can review it quickly.</p>
+      <div class="callout-card__actions">
+        <button class="topbar-action" type="button" id="calloutNewMaintenance">Submit maintenance request</button>
+      </div>
+    </div>
+  `;
+
+  on("calloutNewMaintenance", "click", () => {
+    openMaintenanceModal();
+  });
+}
+
 // -------------------------
 // Rendering
 // -------------------------
@@ -481,45 +570,116 @@ function normaliseStatusClass(status) {
   return "badge badge--neutral";
 }
 
+function announcementItemClass(priority) {
+  const value = String(priority || "").toLowerCase();
+  if (value === "urgent") return "list-item list-item--announcement-urgent";
+  if (value === "high") return "list-item list-item--announcement-high";
+  return "list-item";
+}
+
+function announcementBadgeClass(priority) {
+  const value = String(priority || "").toLowerCase();
+  if (value === "urgent") return "badge badge--urgent";
+  if (value === "high") return "badge badge--high";
+  return "badge badge--neutral";
+}
+
+function renderSkeletonList(targetId, count = 3) {
+  const container = $(targetId);
+  if (!container) return;
+
+  container.innerHTML = Array.from({ length: count }).map(() => `
+    <div class="skeleton-card">
+      <div class="skeleton-line skeleton-line--lg"></div>
+      <div class="skeleton-line skeleton-line--sm"></div>
+      <div class="skeleton-line skeleton-line--md"></div>
+    </div>
+  `).join("");
+}
+
+function renderEmptyState(targetId, title, text, actionText = "", actionId = "") {
+  const container = $(targetId);
+  if (!container) return;
+
+  container.innerHTML = `
+    <div class="empty-state">
+      <h3 class="empty-state__title">${escapeHtml(title)}</h3>
+      <p class="empty-state__text">${escapeHtml(text)}</p>
+      ${actionText && actionId ? `
+        <div class="empty-state__actions">
+          <button class="panel__action" type="button" id="${escapeHtml(actionId)}">${escapeHtml(actionText)}</button>
+        </div>
+      ` : ""}
+    </div>
+  `;
+}
+
 function renderMaintenanceItems(items, targetId) {
   const container = $(targetId);
   if (!container) return;
 
   if (!items || !items.length) {
-    container.innerHTML = `
-      <div class="list-item">
-        <div class="list-item__body">No maintenance requests found.</div>
-      </div>
-    `;
+    const isHome = targetId === "recentMaintenanceList";
+    renderEmptyState(
+      targetId,
+      isHome ? "No maintenance requests yet" : "No maintenance requests found",
+      isHome
+        ? "Your latest requests and updates will appear here."
+        : "There are no maintenance requests for the selected filter.",
+      "Submit request",
+      `${targetId}-empty-action`
+    );
+
+    on(`${targetId}-empty-action`, "click", () => {
+      openMaintenanceModal();
+    });
     return;
   }
 
-  container.innerHTML = items.map((item, index) => `
-    <article class="list-item" data-status="${escapeHtml((item.status || "").toLowerCase())}">
-      <div class="list-item__top">
-        <div>
-          <h3 class="list-item__title">${escapeHtml(item.subject || "Untitled request")}</h3>
-          <div class="list-item__meta">
-            Submitted ${formatDate(item.createdDate)}
+  container.innerHTML = items.map((item, index) => {
+    const latestText = item.portalUpdate || item.description || "No additional details yet.";
+    const status = item.status || "Unknown";
+    const submitted = formatDate(item.createdDate);
+
+    return `
+      <article class="list-item" data-status="${escapeHtml(String(status).toLowerCase())}">
+        <div class="list-item__top">
+          <div>
+            <h3 class="list-item__title">${escapeHtml(item.subject || "Untitled request")}</h3>
+            <div class="list-item__meta">
+              Submitted ${submitted}
+            </div>
           </div>
+          <span class="${normaliseStatusClass(status)}">${escapeHtml(status)}</span>
         </div>
-        <span class="${normaliseStatusClass(item.status)}">${escapeHtml(item.status || "Unknown")}</span>
-      </div>
-      <div class="list-item__body">
-        ${escapeHtml(item.portalUpdate || item.description || "No additional details yet.")}
-      </div>
-      <div class="list-item__footer">
-        <button class="panel__action" type="button" data-maintenance-index="${index}">
-          View details
-        </button>
-      </div>
-    </article>
-  `).join("");
+        <div class="list-item__body">
+          ${escapeHtml(latestText)}
+        </div>
+        <div class="list-item__footer">
+          <div class="list-item__footer-meta">
+            ${item.portalUpdate ? "Latest portal update available" : "No new portal update yet"}
+          </div>
+          <button class="panel__action" type="button" data-maintenance-index="${index}" data-maintenance-target="${targetId}">
+            View details
+          </button>
+        </div>
+      </article>
+    `;
+  }).join("");
 
   container.querySelectorAll("[data-maintenance-index]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const idx = Number(btn.dataset.maintenanceIndex);
-      const item = items[idx];
+      const sourceTarget = btn.dataset.maintenanceTarget;
+      const sourceItems = sourceTarget === "recentMaintenanceList"
+        ? maintenanceItemsCache.slice(0, 3)
+        : (maintenanceFilter === "all"
+            ? maintenanceItemsCache
+            : maintenanceItemsCache.filter(
+                (item) => String(item.status || "").toLowerCase() === maintenanceFilter.toLowerCase()
+              ));
+
+      const item = sourceItems[idx];
       if (item) openMaintenanceDetail(item);
     });
   });
@@ -541,16 +701,16 @@ function renderAnnouncements(items, targetId) {
   if (!container) return;
 
   if (!items || !items.length) {
-    container.innerHTML = `
-      <div class="list-item">
-        <div class="list-item__body">No announcements right now.</div>
-      </div>
-    `;
+    renderEmptyState(
+      targetId,
+      "No announcements right now",
+      "Important property notices will appear here."
+    );
     return;
   }
 
   container.innerHTML = items.map((item) => `
-    <article class="list-item">
+    <article class="${announcementItemClass(item.priority)}">
       <div class="list-item__top">
         <div>
           <h3 class="list-item__title">${escapeHtml(item.title || "Announcement")}</h3>
@@ -558,16 +718,16 @@ function renderAnnouncements(items, targetId) {
             ${escapeHtml(item.category || "General")}${item.scope ? ` • ${escapeHtml(item.scope)}` : ""}
           </div>
         </div>
-        <span class="badge badge--neutral">${escapeHtml(item.priority || "Info")}</span>
+        <span class="${announcementBadgeClass(item.priority)}">${escapeHtml(item.priority || "Info")}</span>
       </div>
       <div class="list-item__body">
         ${escapeHtml(item.message || "")}
       </div>
-      <div class="list-item__meta" style="margin-top:10px;">
-        ${item.startDateTime || item.endDateTime
-          ? `Active ${escapeHtml(safeDateTime(item.startDateTime))}${item.endDateTime ? ` to ${escapeHtml(safeDateTime(item.endDateTime))}` : ""}`
-          : ""}
-      </div>
+      ${(item.startDateTime || item.endDateTime) ? `
+        <div class="list-item__meta" style="margin-top:10px;">
+          Active ${escapeHtml(safeDateTime(item.startDateTime))}${item.endDateTime ? ` to ${escapeHtml(safeDateTime(item.endDateTime))}` : ""}
+        </div>
+      ` : ""}
     </article>
   `).join("");
 }
@@ -577,11 +737,11 @@ function renderDocuments(items) {
   if (!container) return;
 
   if (!items || !items.length) {
-    container.innerHTML = `
-      <div class="list-item">
-        <div class="list-item__body">No documents available.</div>
-      </div>
-    `;
+    renderEmptyState(
+      "documentsList",
+      "No documents available",
+      "Documents linked to your tenancy will appear here."
+    );
     return;
   }
 
@@ -624,12 +784,7 @@ function openMaintenanceDetail(item) {
   setText("maintenanceDetailDescription", item.description || "No description provided.");
   setText("maintenanceDetailUpdate", item.portalUpdate || "No update has been added yet.");
 
-  const modal = $("maintenanceDetailModal");
-  if (modal) modal.classList.add("is-open");
-}
-
-function closeMaintenanceDetail() {
-  $("maintenanceDetailModal")?.classList.remove("is-open");
+  $("maintenanceDetailModal")?.classList.add("is-open");
 }
 
 function openMaintenanceModal() {
@@ -638,15 +793,25 @@ function openMaintenanceModal() {
   $("subject")?.focus();
 }
 
-function closeMaintenanceModal() {
-  $("maintenanceModal")?.classList.remove("is-open");
+function openLogoutModal() {
+  $("logoutModal")?.classList.add("is-open");
+}
+
+function closeModalById(id) {
+  $(id)?.classList.remove("is-open");
+}
+
+function closeAllModals() {
+  document.querySelectorAll(".modal.is-open").forEach((modal) => {
+    modal.classList.remove("is-open");
+  });
 }
 
 function initModalControls() {
   document.querySelectorAll("[data-close-modal]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const target = btn.dataset.closeModal;
-      $(target)?.classList.remove("is-open");
+      closeModalById(target);
     });
   });
 
@@ -656,6 +821,13 @@ function initModalControls() {
         modal.classList.remove("is-open");
       }
     });
+  });
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      closeAllModals();
+      closeMobileSidebar();
+    }
   });
 }
 
@@ -683,6 +855,12 @@ async function loadMe() {
 
   applyTenantProfileToShell(shellProfile);
 
+  renderSkeletonList("maintenanceList", 3);
+  renderSkeletonList("recentMaintenanceList", 3);
+  renderSkeletonList("documentsList", 3);
+  renderSkeletonList("announcementsList", 3);
+  renderSkeletonList("homeAnnouncements", 2);
+
   await Promise.all([
     loadMaintenance(true),
     loadDocuments(true),
@@ -690,11 +868,15 @@ async function loadMe() {
   ]);
 
   updateDashboardMetrics();
+  renderHomeCallout();
   setStatus("Ready", "ok");
 }
 
 async function loadMaintenance(skipStatusMessage = false) {
-  if (!skipStatusMessage) setStatus("Loading maintenance…", "warn");
+  if (!skipStatusMessage) {
+    setStatus("Loading maintenance…", "warn");
+    renderSkeletonList("maintenanceList", 3);
+  }
 
   try {
     const items = await api("/api/maintenance");
@@ -703,6 +885,7 @@ async function loadMaintenance(skipStatusMessage = false) {
     renderFilteredMaintenance();
     renderMaintenanceItems(maintenanceItemsCache.slice(0, 3), "recentMaintenanceList");
     updateDashboardMetrics();
+    renderHomeCallout();
 
     if (!skipStatusMessage) setStatus("Maintenance ready", "ok");
   } catch (e) {
@@ -710,13 +893,17 @@ async function loadMaintenance(skipStatusMessage = false) {
     maintenanceItemsCache = [];
     renderFilteredMaintenance();
     renderMaintenanceItems([], "recentMaintenanceList");
+    renderHomeCallout();
 
     if (!skipStatusMessage) setStatus("Maintenance unavailable", "warn");
   }
 }
 
 async function loadDocuments(skipStatusMessage = false) {
-  if (!skipStatusMessage) setStatus("Loading documents…", "warn");
+  if (!skipStatusMessage) {
+    setStatus("Loading documents…", "warn");
+    renderSkeletonList("documentsList", 3);
+  }
 
   try {
     const items = await api("/api/docs");
@@ -735,13 +922,17 @@ async function loadDocuments(skipStatusMessage = false) {
 }
 
 async function loadAnnouncementsAndRender(skipStatusMessage = false) {
-  if (!skipStatusMessage) setStatus("Loading announcements…", "warn");
+  if (!skipStatusMessage) {
+    setStatus("Loading announcements…", "warn");
+    renderSkeletonList("announcementsList", 3);
+  }
 
   try {
     const items = await api("/api/announcements");
     announcementsCache = Array.isArray(items) ? items : [];
     renderAnnouncements(announcementsCache, "announcementsList");
     renderAnnouncements(announcementsCache.slice(0, 3), "homeAnnouncements");
+    renderHomeCallout();
 
     if (!skipStatusMessage) setStatus("Announcements ready", "ok");
   } catch (e) {
@@ -749,6 +940,7 @@ async function loadAnnouncementsAndRender(skipStatusMessage = false) {
     announcementsCache = [];
     renderAnnouncements([], "announcementsList");
     renderAnnouncements([], "homeAnnouncements");
+    renderHomeCallout();
 
     if (!skipStatusMessage) setStatus("Announcements unavailable", "warn");
   }
@@ -815,11 +1007,39 @@ function readFileAsBase64Payload(file) {
   });
 }
 
+function updateSelectedFilesUI() {
+  const files = Array.from($("photos")?.files || []);
+  const meta = $("photoSelectionMeta");
+  const list = $("photoSelectionList");
+
+  if (!meta || !list) return;
+
+  if (!files.length) {
+    meta.textContent = "No files selected";
+    list.innerHTML = "";
+    return;
+  }
+
+  meta.textContent = `${files.length} file${files.length === 1 ? "" : "s"} selected`;
+
+  list.innerHTML = files.map((file) => `
+    <span class="file-chip">${escapeHtml(file.name)}</span>
+  `).join("");
+}
+
 function initMaintenanceForm() {
   if (!has("maintenanceForm")) return;
 
+  on("photos", "change", updateSelectedFilesUI);
+  on("subject", "input", () => setMaintenanceMessage("", "info"));
+  on("description", "input", () => setMaintenanceMessage("", "info"));
+
   on("maintenanceForm", "submit", async (e) => {
     e.preventDefault();
+
+    const submitBtn = $("maintenanceSubmitBtn");
+    if (submitBtn) submitBtn.disabled = true;
+
     setMaintenanceMessage("Submitting your request…", "info");
     setStatus("Submitting maintenance…", "warn");
 
@@ -844,14 +1064,18 @@ function initMaintenanceForm() {
       });
 
       $("maintenanceForm")?.reset();
-await loadMaintenance();
-closeMaintenanceModal();
-showToast("Maintenance request submitted.", "ok");
-setStatus("Submitted", "ok");
+      updateSelectedFilesUI();
+
+      await loadMaintenance();
+      closeModalById("maintenanceModal");
+      showToast("Maintenance request submitted.", "ok");
+      setStatus("Submitted", "ok");
     } catch (err) {
       console.error(err);
       setMaintenanceMessage(err?.message || "Something went wrong.", "bad");
       setStatus("Submit failed", "bad");
+    } finally {
+      if (submitBtn) submitBtn.disabled = false;
     }
   });
 }
@@ -862,8 +1086,14 @@ setStatus("Submitted", "ok");
 function initProfileForm() {
   if (!has("profileForm")) return;
 
+  on("profileEmail", "input", () => setProfileMessage("", "info"));
+  on("profilePhone", "input", () => setProfileMessage("", "info"));
+
   on("profileForm", "submit", async (e) => {
     e.preventDefault();
+
+    const saveBtn = $("profileSaveBtn");
+    if (saveBtn) saveBtn.disabled = true;
 
     const email = ($("profileEmail")?.value || "").trim();
     const phone = ($("profilePhone")?.value || "").trim();
@@ -873,12 +1103,14 @@ function initProfileForm() {
     if (!validateEmail(email)) {
       setProfileMessage("Enter a valid email address.", "bad");
       setStatus("Profile validation failed", "bad");
+      if (saveBtn) saveBtn.disabled = false;
       return;
     }
 
     if (!validatePhone(phone)) {
       setProfileMessage("Enter a valid phone number.", "bad");
       setStatus("Profile validation failed", "bad");
+      if (saveBtn) saveBtn.disabled = false;
       return;
     }
 
@@ -907,6 +1139,7 @@ function initProfileForm() {
         leaseEndDate: portalContext?.sf?.lease?.endDate || ""
       });
 
+      setText("profileSavedAt", `Saved ${safeDateTime(new Date().toISOString())}`);
       setProfileMessage("Your contact details have been updated successfully.", "ok");
       setStatus("Profile updated", "ok");
       showToast("Profile updated.", "ok");
@@ -914,6 +1147,8 @@ function initProfileForm() {
       console.error("Profile update failed:", err);
       setProfileMessage(err?.message || "Failed to update profile.", "bad");
       setStatus("Profile update failed", "bad");
+    } finally {
+      if (saveBtn) saveBtn.disabled = false;
     }
   });
 }
@@ -931,7 +1166,11 @@ function initAuthButtons() {
     }
   });
 
-  on("logoutBtn", "click", async () => {
+  on("logoutBtn", "click", () => {
+    openLogoutModal();
+  });
+
+  on("confirmLogoutBtn", "click", async () => {
     try {
       await logout();
     } catch (e) {
@@ -962,6 +1201,17 @@ async function renderLoggedInState() {
 
   await loadMe();
 
+  const lastView = getLastView();
+  setActiveView(lastView, { skipScroll: true });
+
+  if (lastView === "maintenance") {
+    renderFilteredMaintenance();
+  } else if (lastView === "documents") {
+    renderDocuments(documentsCache);
+  } else if (lastView === "announcements") {
+    renderAnnouncements(announcementsCache, "announcementsList");
+  }
+
   if (loading) loading.classList.add("hidden");
   if (app) app.classList.remove("hidden");
 }
@@ -979,6 +1229,7 @@ async function boot() {
   initProfileForm();
   initAuthButtons();
   initModalControls();
+  updateSelectedFilesUI();
 
   setStatus("Initialising auth…", "warn");
   await requireAuth0Client();
