@@ -2,368 +2,506 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta
+    name="viewport"
+    content="width=device-width,initial-scale=1,viewport-fit=cover"
+  />
   <title>Tenant Portal</title>
-  <link rel="stylesheet" href="/styles.css" />
+  <link rel="stylesheet" href="./styles.css" />
+  <script defer src="./vendor/auth0-spa-js.production.js"></script>
+  <script defer src="./app.js"></script>
 </head>
 <body>
-  <div id="guestScreen" class="guest-screen">
-    <div class="guest-screen__card">
-      <div class="brand guest-screen__brand">
-        <div class="brand__mark">TP</div>
-        <div class="brand__text">
-          <div class="brand__name">Tenant Portal</div>
-          <div class="brand__sub">Property Console</div>
-        </div>
-      </div>
-
-      <h1 class="guest-screen__title">Welcome to your tenant portal</h1>
-      <p class="guest-screen__text">
-        Log in securely to view your tenancy details, submit maintenance requests,
-        download documents, and see property announcements.
-      </p>
-
-      <button id="loginBtn" class="topbar-action" type="button">Log in</button>
-    </div>
-  </div>
-
-  <div id="app" class="app-shell hidden">
-    <div id="mobileSidebarOverlay" class="mobile-sidebar-overlay"></div>
-
-    <aside class="sidebar">
-      <div class="sidebar__top">
-        <div class="brand">
-          <div class="brand__mark">TP</div>
-          <div class="brand__text">
-            <div class="brand__name">Tenant Portal</div>
-            <div class="brand__sub">Property Console</div>
-          </div>
-        </div>
-      </div>
-
-      <nav class="sidebar__nav">
-        <button class="nav-item active" data-view="home" type="button">
-          <span class="nav-item__icon">⌂</span>
-          <span>Home</span>
-        </button>
-
-        <button class="nav-item" data-view="maintenance" type="button">
-          <span class="nav-item__icon">🛠</span>
-          <span>Maintenance</span>
-        </button>
-
-        <button class="nav-item" data-view="documents" type="button">
-          <span class="nav-item__icon">📄</span>
-          <span>Documents</span>
-        </button>
-
-        <button class="nav-item" data-view="announcements" type="button">
-          <span class="nav-item__icon">🔔</span>
-          <span>Announcements</span>
-        </button>
-
-        <button class="nav-item" data-view="profile" type="button">
-          <span class="nav-item__icon">👤</span>
-          <span>Profile</span>
-        </button>
-      </nav>
-
-      <div class="sidebar__bottom">
-        <div class="tenant-mini-card">
-          <div class="tenant-mini-card__label">Current tenancy</div>
-          <div class="tenant-mini-card__value" id="sidebarTenancyStatus">Active</div>
-          <div class="tenant-mini-card__meta" id="sidebarUnitName">Unit —</div>
-        </div>
-
-        <button id="logoutBtn" class="sidebar__logout" type="button">Log out</button>
-      </div>
-    </aside>
-
-    <div class="main-shell">
-      <header class="topbar">
-        <div class="topbar__left">
-          <button class="mobile-nav-toggle" id="mobileNavToggle" type="button" aria-label="Open navigation">☰</button>
+  <div class="portal-root">
+    <!-- Guest / auth loading -->
+    <section id="authLoading" class="guest-screen guest-screen--muted">
+      <div class="guest-card">
+        <div class="brand-lockup">
+          <div class="brand-lockup__mark">TP</div>
           <div>
-            <h1 class="page-title" id="pageTitle">Dashboard</h1>
-            <p class="page-subtitle" id="pageSubtitle">Overview of your tenancy and latest activity</p>
+            <p class="eyebrow">Tenant Portal</p>
+            <h1>Loading your portal</h1>
+          </div>
+        </div>
+        <p class="guest-copy">
+          Checking your session and preparing your tenancy workspace.
+        </p>
+      </div>
+    </section>
+
+    <section id="guestScreen" class="guest-screen hidden" aria-label="Login screen">
+      <div class="guest-card">
+        <div class="brand-lockup">
+          <div class="brand-lockup__mark">TP</div>
+          <div>
+            <p class="eyebrow">Tenant Portal</p>
+            <h1>Your home, documents, and maintenance in one place</h1>
           </div>
         </div>
 
-        <div class="topbar__right">
-          <div class="topbar-status">
-            <span class="topbar-status__dot" id="globalStatusDot"></span>
-            <span id="globalStatusText">Starting…</span>
-          </div>
+        <p class="guest-copy">
+          Sign in securely to view your tenancy, submit maintenance requests,
+          download documents, and stay up to date with announcements.
+        </p>
 
-          <button class="topbar-action" id="quickMaintenanceBtn" type="button">New Request</button>
-
-          <div class="topbar-profile">
-            <div class="topbar-profile__avatar" id="profileInitials">TP</div>
-            <div class="topbar-profile__meta">
-              <div class="topbar-profile__name" id="profileNameTop">Tenant</div>
-              <div class="topbar-profile__email" id="profileEmailTop">tenant@email.com</div>
-            </div>
-          </div>
+        <div class="guest-actions">
+          <button id="loginBtn" class="btn btn--primary btn--lg" type="button">
+            Sign in
+          </button>
         </div>
-      </header>
+      </div>
+    </section>
 
-      <main class="content">
-        <section class="view active" id="view-home">
-          <div class="summary-grid">
-            <div class="metric-card">
-              <div class="metric-card__label">Open requests</div>
-              <div class="metric-card__value" id="metricOpenRequests">0</div>
-              <div class="metric-card__meta">Currently active</div>
-            </div>
+    <!-- App shell -->
+    <div id="app" class="app-shell hidden">
+      <div id="mobileSidebarOverlay" class="mobile-sidebar-overlay"></div>
 
-            <div class="metric-card">
-              <div class="metric-card__label">Documents</div>
-              <div class="metric-card__value" id="metricDocuments">0</div>
-              <div class="metric-card__meta">Available to download</div>
-            </div>
-
-            <div class="metric-card">
-              <div class="metric-card__label">Tenancy status</div>
-              <div class="metric-card__value metric-card__value--small" id="metricTenancyStatus">Active</div>
-              <div class="metric-card__meta">Current agreement status</div>
-            </div>
-
-            <div class="metric-card">
-              <div class="metric-card__label">Lease end</div>
-              <div class="metric-card__value metric-card__value--small" id="metricLeaseEnd">—</div>
-              <div class="metric-card__meta">Next important date</div>
+      <aside id="sidebar" class="sidebar" aria-label="Primary navigation">
+        <div class="sidebar__header">
+          <div class="brand-lockup brand-lockup--compact">
+            <div class="brand-lockup__mark">TP</div>
+            <div>
+              <p class="eyebrow eyebrow--tight">Tenant Portal</p>
+              <h2 class="sidebar__title">Operations Console</h2>
             </div>
           </div>
 
-          <div class="home-callout" id="homeCallout"></div>
+          <button
+            id="closeSidebarBtn"
+            class="icon-btn sidebar__close"
+            type="button"
+            aria-label="Close navigation"
+          >
+            ✕
+          </button>
+        </div>
 
-          <div class="dashboard-grid">
-            <section class="panel panel--large">
-              <div class="panel__header">
-                <div>
-                  <h2 class="panel__title">Recent maintenance</h2>
-                  <p class="panel__subtitle">Latest requests and status updates</p>
-                </div>
-                <button class="panel__action" data-view-link="maintenance" type="button">View all</button>
-              </div>
-              <div id="recentMaintenanceList" class="stack-list"></div>
-            </section>
+        <nav class="nav">
+          <button class="nav__item is-active" data-view="home" type="button">
+            <span class="nav__label">Home</span>
+          </button>
+          <button class="nav__item" data-view="maintenance" type="button">
+            <span class="nav__label">Maintenance</span>
+          </button>
+          <button class="nav__item" data-view="documents" type="button">
+            <span class="nav__label">Documents</span>
+          </button>
+          <button class="nav__item" data-view="announcements" type="button">
+            <span class="nav__label">Announcements</span>
+          </button>
+          <button class="nav__item" data-view="profile" type="button">
+            <span class="nav__label">Profile</span>
+          </button>
+        </nav>
 
-            <section class="panel">
-              <div class="panel__header">
-                <div>
-                  <h2 class="panel__title">Announcements</h2>
-                  <p class="panel__subtitle">Important property updates</p>
-                </div>
-                <button class="panel__action" data-view-link="announcements" type="button">Open</button>
-              </div>
-              <div id="homeAnnouncements" class="stack-list"></div>
-            </section>
-
-            <section class="panel">
-              <div class="panel__header">
-                <div>
-                  <h2 class="panel__title">Tenancy details</h2>
-                  <p class="panel__subtitle">Current property information</p>
-                </div>
-              </div>
-              <div class="detail-list">
-                <div class="detail-row"><span>Name</span><strong id="tenantName">—</strong></div>
-                <div class="detail-row"><span>Email</span><strong id="tenantEmail">—</strong></div>
-                <div class="detail-row"><span>Phone</span><strong id="tenantPhone">—</strong></div>
-                <div class="detail-row"><span>Property</span><strong id="tenantProperty">—</strong></div>
-                <div class="detail-row"><span>Unit</span><strong id="tenantUnit">—</strong></div>
-                <div class="detail-row"><span>Lease</span><strong id="tenantLease">—</strong></div>
-              </div>
-            </section>
-
-            <section class="panel">
-              <div class="panel__header">
-                <div>
-                  <h2 class="panel__title">Quick actions</h2>
-                  <p class="panel__subtitle">Common portal tasks</p>
-                </div>
-              </div>
-              <div class="action-grid">
-                <button class="quick-action" id="qaMaintenance" type="button">Submit maintenance</button>
-                <button class="quick-action" id="qaDocuments" type="button">Open documents</button>
-                <button class="quick-action" id="qaAnnouncements" type="button">View announcements</button>
-                <button class="quick-action" id="qaProfile" type="button">Update profile</button>
-              </div>
-            </section>
-          </div>
-        </section>
-
-        <section class="view" id="view-maintenance">
-          <div class="toolbar">
-            <div class="toolbar__group">
-              <button class="filter-chip active" data-maintenance-filter="all" type="button">All</button>
-              <button class="filter-chip" data-maintenance-filter="open" type="button">Open</button>
-              <button class="filter-chip" data-maintenance-filter="in progress" type="button">In Progress</button>
-              <button class="filter-chip" data-maintenance-filter="waiting for contractor" type="button">Waiting</button>
-              <button class="filter-chip" data-maintenance-filter="completed" type="button">Completed</button>
+        <div class="sidebar__footer">
+          <div class="tenant-mini">
+            <div id="sidebarInitials" class="avatar">TP</div>
+            <div class="tenant-mini__meta">
+              <p id="sidebarTenantName" class="tenant-mini__title">Tenant</p>
+              <p id="sidebarTenantEmail" class="tenant-mini__sub">—</p>
             </div>
-            <button class="topbar-action" id="maintenanceCreateBtn" type="button">New request</button>
           </div>
 
-          <section class="panel">
-            <div class="panel__header">
-              <div>
-                <h2 class="panel__title">Maintenance requests</h2>
-                <p class="panel__subtitle">Track submitted issues and updates</p>
-              </div>
-            </div>
-            <div id="maintenanceList" class="stack-list"></div>
-          </section>
-        </section>
+          <button id="logoutBtn" class="btn btn--ghost btn--block" type="button">
+            Log out
+          </button>
+        </div>
+      </aside>
 
-        <section class="view" id="view-documents">
-          <section class="panel">
-            <div class="panel__header">
-              <div>
-                <h2 class="panel__title">Documents</h2>
-                <p class="panel__subtitle">Files available through your tenancy</p>
-              </div>
-            </div>
-            <div id="documentsList" class="stack-list"></div>
-          </section>
-        </section>
+      <main class="main-shell">
+        <header class="topbar">
+          <div class="topbar__left">
+            <button
+              id="openSidebarBtn"
+              class="icon-btn topbar__menu"
+              type="button"
+              aria-label="Open navigation"
+            >
+              ☰
+            </button>
 
-        <section class="view" id="view-announcements">
-          <section class="panel">
-            <div class="panel__header">
-              <div>
-                <h2 class="panel__title">Announcements</h2>
-                <p class="panel__subtitle">Building and tenancy notices</p>
-              </div>
+            <div>
+              <p id="pageEyebrow" class="eyebrow eyebrow--tight">Dashboard</p>
+              <h1 id="pageTitle" class="page-title">Home</h1>
+              <p id="pageSubtitle" class="page-subtitle">
+                Overview of your tenancy, updates, and actions.
+              </p>
             </div>
-            <div id="announcementsList" class="stack-list"></div>
-          </section>
-        </section>
+          </div>
 
-        <section class="view" id="view-profile">
-          <section class="panel panel--form">
-            <div class="panel__header">
-              <div>
-                <h2 class="panel__title">Profile</h2>
-                <p class="panel__subtitle">Update your contact details</p>
-              </div>
+          <div class="topbar__right">
+            <div class="status-pill" aria-live="polite">
+              <span id="globalStatusDot" class="status-pill__dot"></span>
+              <span id="globalStatusText">Connected</span>
             </div>
 
-            <form id="profileForm" class="form-grid">
-              <div class="field">
-                <label for="profileEmail">Email</label>
-                <input id="profileEmail" name="profileEmail" type="email" />
-              </div>
+            <button
+              id="topbarPrimaryAction"
+              class="btn btn--primary hidden"
+              type="button"
+            >
+              New Request
+            </button>
 
-              <div class="field">
-                <label for="profilePhone">Mobile phone</label>
-                <input id="profilePhone" name="profilePhone" type="tel" />
+            <div class="tenant-chip">
+              <div id="topbarInitials" class="avatar avatar--sm">TP</div>
+              <div class="tenant-chip__meta">
+                <p id="topbarTenantName" class="tenant-chip__title">Tenant</p>
+                <p id="topbarTenantEmail" class="tenant-chip__sub">—</p>
               </div>
+            </div>
+          </div>
+        </header>
 
-              <div class="form-actions">
-                <button id="profileSaveBtn" type="submit" class="topbar-action">Save changes</button>
-              </div>
+        <div class="content-shell">
+          <!-- HOME -->
+          <section id="view-home" class="view is-active" aria-label="Home view">
+            <div class="metrics-grid">
+              <article class="metric-card">
+                <p class="metric-card__label">Open requests</p>
+                <p id="metricOpenRequests" class="metric-card__value">—</p>
+                <p id="metricOpenRequestsMeta" class="metric-card__meta">
+                  Current maintenance items still in progress
+                </p>
+              </article>
 
-              <div id="profileSavedAt" class="saved-at"></div>
-              <div id="profileMessage" class="form-message" style="display:none;"></div>
-            </form>
+              <article class="metric-card">
+                <p class="metric-card__label">Documents</p>
+                <p id="metricDocuments" class="metric-card__value">—</p>
+                <p class="metric-card__meta">
+                  Files available for your tenancy
+                </p>
+              </article>
+
+              <article class="metric-card">
+                <p class="metric-card__label">Tenancy status</p>
+                <p id="metricTenancyStatus" class="metric-card__value metric-card__value--small">—</p>
+                <p id="metricTenancyStatusMeta" class="metric-card__meta">
+                  Current tenancy record status
+                </p>
+              </article>
+
+              <article class="metric-card">
+                <p class="metric-card__label">Lease end</p>
+                <p id="metricLeaseEnd" class="metric-card__value metric-card__value--small">—</p>
+                <p id="metricLeaseEndMeta" class="metric-card__meta">
+                  Remaining time on your current lease
+                </p>
+              </article>
+            </div>
+
+            <section id="homeCallout" class="home-callout"></section>
+
+            <div class="dashboard-grid">
+              <article class="panel-card panel-card--span-2">
+                <div class="section-header">
+                  <div>
+                    <p class="eyebrow eyebrow--tight">Activity</p>
+                    <h2 class="section-title">Recent maintenance</h2>
+                  </div>
+                  <button class="btn btn--ghost btn--sm" data-open-view="maintenance" type="button">
+                    View all
+                  </button>
+                </div>
+                <div id="recentMaintenanceList" class="list-stack"></div>
+              </article>
+
+              <article class="panel-card">
+                <div class="section-header">
+                  <div>
+                    <p class="eyebrow eyebrow--tight">Important</p>
+                    <h2 class="section-title">Announcements</h2>
+                  </div>
+                  <button class="btn btn--ghost btn--sm" data-open-view="announcements" type="button">
+                    View all
+                  </button>
+                </div>
+                <div id="homeAnnouncements" class="list-stack"></div>
+              </article>
+
+              <article class="panel-card">
+                <div class="section-header">
+                  <div>
+                    <p class="eyebrow eyebrow--tight">Tenancy</p>
+                    <h2 class="section-title">Details</h2>
+                  </div>
+                </div>
+
+                <dl id="tenancyDetails" class="detail-list">
+                  <div class="detail-list__row">
+                    <dt>Tenant</dt>
+                    <dd id="detailTenantName">—</dd>
+                  </div>
+                  <div class="detail-list__row">
+                    <dt>Email</dt>
+                    <dd id="detailTenantEmail">—</dd>
+                  </div>
+                  <div class="detail-list__row">
+                    <dt>Phone</dt>
+                    <dd id="detailTenantPhone">—</dd>
+                  </div>
+                  <div class="detail-list__row">
+                    <dt>Property</dt>
+                    <dd id="detailProperty">—</dd>
+                  </div>
+                  <div class="detail-list__row">
+                    <dt>Unit</dt>
+                    <dd id="detailUnit">—</dd>
+                  </div>
+                  <div class="detail-list__row">
+                    <dt>Lease</dt>
+                    <dd id="detailLease">—</dd>
+                  </div>
+                </dl>
+              </article>
+
+              <article class="panel-card">
+                <div class="section-header">
+                  <div>
+                    <p class="eyebrow eyebrow--tight">Actions</p>
+                    <h2 class="section-title">Quick actions</h2>
+                  </div>
+                </div>
+
+                <div class="quick-actions">
+                  <button class="action-card" data-action="new-maintenance" type="button">
+                    <span class="action-card__title">Create maintenance request</span>
+                    <span class="action-card__text">Report an issue and upload photos.</span>
+                  </button>
+
+                  <button class="action-card" data-open-view="documents" type="button">
+                    <span class="action-card__title">Open documents</span>
+                    <span class="action-card__text">View tenancy and property files.</span>
+                  </button>
+
+                  <button class="action-card" data-open-view="profile" type="button">
+                    <span class="action-card__title">Update contact details</span>
+                    <span class="action-card__text">Keep your email and phone current.</span>
+                  </button>
+                </div>
+              </article>
+            </div>
           </section>
-        </section>
+
+          <!-- MAINTENANCE -->
+          <section id="view-maintenance" class="view" aria-label="Maintenance view">
+            <article class="panel-card">
+              <div class="section-header section-header--stack-mobile">
+                <div>
+                  <p class="eyebrow eyebrow--tight">Maintenance</p>
+                  <h2 class="section-title">Requests</h2>
+                </div>
+
+                <div class="section-actions">
+                  <div class="chip-row" id="maintenanceFilterRow">
+                    <button class="chip is-active" data-maintenance-filter="all" type="button">All</button>
+                    <button class="chip" data-maintenance-filter="open" type="button">Open</button>
+                    <button class="chip" data-maintenance-filter="in progress" type="button">In Progress</button>
+                    <button class="chip" data-maintenance-filter="waiting for contractor" type="button">Waiting</button>
+                    <button class="chip" data-maintenance-filter="completed" type="button">Completed</button>
+                  </div>
+
+                  <button id="maintenanceCreateBtn" class="btn btn--primary" type="button">
+                    New Request
+                  </button>
+                </div>
+              </div>
+
+              <div id="maintenanceList" class="list-stack"></div>
+            </article>
+          </section>
+
+          <!-- DOCUMENTS -->
+          <section id="view-documents" class="view" aria-label="Documents view">
+            <article class="panel-card">
+              <div class="section-header">
+                <div>
+                  <p class="eyebrow eyebrow--tight">Documents</p>
+                  <h2 class="section-title">Files</h2>
+                </div>
+              </div>
+
+              <div id="documentsList" class="list-stack"></div>
+            </article>
+          </section>
+
+          <!-- ANNOUNCEMENTS -->
+          <section id="view-announcements" class="view" aria-label="Announcements view">
+            <article class="panel-card">
+              <div class="section-header">
+                <div>
+                  <p class="eyebrow eyebrow--tight">Announcements</p>
+                  <h2 class="section-title">Property updates</h2>
+                </div>
+              </div>
+
+              <div id="announcementsList" class="list-stack"></div>
+            </article>
+          </section>
+
+          <!-- PROFILE -->
+          <section id="view-profile" class="view" aria-label="Profile view">
+            <article class="panel-card panel-card--narrow">
+              <div class="section-header">
+                <div>
+                  <p class="eyebrow eyebrow--tight">Profile</p>
+                  <h2 class="section-title">Contact details</h2>
+                </div>
+              </div>
+
+              <form id="profileForm" class="form-stack" novalidate>
+                <label class="field">
+                  <span class="field__label">Email address</span>
+                  <input id="profileEmail" class="input" type="email" autocomplete="email" />
+                </label>
+
+                <label class="field">
+                  <span class="field__label">Mobile phone</span>
+                  <input id="profilePhone" class="input" type="tel" autocomplete="tel" />
+                </label>
+
+                <div class="form-actions">
+                  <button id="profileSaveBtn" class="btn btn--primary" type="submit">
+                    Save changes
+                  </button>
+                  <span id="profileSavedAt" class="saved-at"></span>
+                </div>
+
+                <div id="profileMessage" class="form-message hidden" aria-live="polite"></div>
+              </form>
+            </article>
+          </section>
+        </div>
       </main>
     </div>
-  </div>
 
-  <div id="authLoading" class="auth-loading hidden">
-    <div class="auth-loading__card">
-      <div class="auth-loading__spinner"></div>
-      <div class="auth-loading__text">Loading portal...</div>
+    <!-- Toast -->
+    <div id="toast" class="toast hidden" role="status" aria-live="polite">
+      <span id="toastText"></span>
     </div>
-  </div>
 
-  <div id="toast" class="toast">
-    <span id="toastText"></span>
-  </div>
-
-  <div id="maintenanceModal" class="modal">
-    <div class="modal__dialog">
-      <div class="panel__header">
-        <div>
-          <h2 class="panel__title">Submit maintenance request</h2>
-          <p class="panel__subtitle">Tell us what needs attention</p>
-        </div>
-        <button class="panel__action" type="button" data-close-modal="maintenanceModal">Close</button>
-      </div>
-
-      <form id="maintenanceForm" class="form-grid">
-        <div class="field" style="grid-column: 1 / -1;">
-          <label for="subject">Subject</label>
-          <input id="subject" name="subject" type="text" />
+    <!-- Maintenance create modal -->
+    <div id="maintenanceModal" class="modal hidden" aria-hidden="true">
+      <div class="modal__backdrop" data-close-modal="maintenanceModal"></div>
+      <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="maintenanceModalTitle">
+        <div class="modal__header">
+          <div>
+            <p class="eyebrow eyebrow--tight">Maintenance</p>
+            <h2 id="maintenanceModalTitle" class="modal__title">Create request</h2>
+          </div>
+          <button class="icon-btn" data-close-modal="maintenanceModal" type="button" aria-label="Close modal">
+            ✕
+          </button>
         </div>
 
-        <div class="field" style="grid-column: 1 / -1;">
-          <label for="description">Description</label>
-          <textarea id="description" name="description" rows="5"></textarea>
-        </div>
+        <form id="maintenanceForm" class="form-stack" novalidate>
+          <label class="field">
+            <span class="field__label">Subject</span>
+            <input id="subject" class="input" type="text" maxlength="120" required />
+          </label>
 
-        <div class="field" style="grid-column: 1 / -1;">
-          <label for="photos">Photos</label>
-          <input id="photos" name="photos" type="file" accept="image/jpeg,image/png,image/webp" multiple />
-          <div id="photoSelectionMeta" class="file-meta"></div>
-          <div id="photoSelectionList" class="file-chip-list"></div>
-        </div>
+          <label class="field">
+            <span class="field__label">Description</span>
+            <textarea id="description" class="input input--textarea" rows="6" required></textarea>
+          </label>
 
-        <div class="form-actions">
-          <button id="maintenanceSubmitBtn" type="submit" class="topbar-action">Submit request</button>
-        </div>
+          <label class="field">
+            <span class="field__label">Photos</span>
+            <input id="photos" class="input input--file" type="file" accept="image/png,image/jpeg,image/webp" multiple />
+            <span id="photoSelectionMeta" class="field__help">
+              You can upload up to 5 images, maximum 2MB each.
+            </span>
+            <div id="photoSelectionList" class="file-chip-list"></div>
+          </label>
 
-        <div id="maintenanceMsg" class="form-message" style="display:none;"></div>
-      </form>
-    </div>
-  </div>
+          <div id="maintenanceMsg" class="form-message hidden" aria-live="polite"></div>
 
-  <div id="maintenanceDetailModal" class="modal">
-    <div class="modal__dialog">
-      <div class="panel__header">
-        <div>
-          <h2 class="panel__title" id="maintenanceDetailTitle">Maintenance request</h2>
-          <p class="panel__subtitle">Request details</p>
-        </div>
-        <button class="panel__action" type="button" data-close-modal="maintenanceDetailModal">Close</button>
-      </div>
-
-      <div class="detail-list">
-        <div class="detail-row"><span>Status</span><strong id="maintenanceDetailStatus">—</strong></div>
-        <div class="detail-row"><span>Submitted</span><strong id="maintenanceDetailSubmitted">—</strong></div>
-        <div class="detail-row detail-row--stack">
-          <span>Description</span>
-          <strong id="maintenanceDetailDescription">—</strong>
-        </div>
-        <div class="detail-row detail-row--stack">
-          <span>Latest update</span>
-          <strong id="maintenanceDetailUpdate">—</strong>
-        </div>
+          <div class="modal__footer">
+            <button class="btn btn--ghost" data-close-modal="maintenanceModal" type="button">
+              Cancel
+            </button>
+            <button id="maintenanceSubmitBtn" class="btn btn--primary" type="submit">
+              Submit request
+            </button>
+          </div>
+        </form>
       </div>
     </div>
-  </div>
 
-  <div id="logoutModal" class="modal">
-    <div class="modal__dialog modal__dialog--small">
-      <div class="panel__header">
-        <div>
-          <h2 class="panel__title">Log out</h2>
-          <p class="panel__subtitle">Are you sure you want to log out of the portal?</p>
+    <!-- Maintenance detail modal -->
+    <div id="maintenanceDetailModal" class="modal hidden" aria-hidden="true">
+      <div class="modal__backdrop" data-close-modal="maintenanceDetailModal"></div>
+      <div class="modal__dialog modal__dialog--wide" role="dialog" aria-modal="true" aria-labelledby="maintenanceDetailTitle">
+        <div class="modal__header">
+          <div>
+            <p class="eyebrow eyebrow--tight">Maintenance</p>
+            <h2 id="maintenanceDetailTitle" class="modal__title">Request details</h2>
+          </div>
+          <button class="icon-btn" data-close-modal="maintenanceDetailModal" type="button" aria-label="Close modal">
+            ✕
+          </button>
+        </div>
+
+        <div class="detail-summary">
+          <div class="detail-summary__meta">
+            <div class="detail-summary__row">
+              <span class="detail-summary__label">Status</span>
+              <span id="maintenanceDetailStatus"></span>
+            </div>
+            <div class="detail-summary__row">
+              <span class="detail-summary__label">Submitted</span>
+              <span id="maintenanceDetailSubmitted">—</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-block">
+          <p class="detail-block__label">Description</p>
+          <p id="maintenanceDetailDescription" class="detail-block__text">—</p>
+        </div>
+
+        <div class="detail-block">
+          <p class="detail-block__label">Latest portal update</p>
+          <p id="maintenanceDetailUpdate" class="detail-block__text">No update available.</p>
+        </div>
+
+        <div class="modal__footer">
+          <button class="btn btn--ghost" data-close-modal="maintenanceDetailModal" type="button">
+            Close
+          </button>
         </div>
       </div>
+    </div>
 
-      <div class="modal-actions">
-        <button class="panel__action" type="button" data-close-modal="logoutModal">Cancel</button>
-        <button id="confirmLogoutBtn" class="topbar-action" type="button">Log out</button>
+    <!-- Logout modal -->
+    <div id="logoutModal" class="modal hidden" aria-hidden="true">
+      <div class="modal__backdrop" data-close-modal="logoutModal"></div>
+      <div class="modal__dialog modal__dialog--small" role="dialog" aria-modal="true" aria-labelledby="logoutModalTitle">
+        <div class="modal__header">
+          <div>
+            <p class="eyebrow eyebrow--tight">Session</p>
+            <h2 id="logoutModalTitle" class="modal__title">Log out?</h2>
+          </div>
+          <button class="icon-btn" data-close-modal="logoutModal" type="button" aria-label="Close modal">
+            ✕
+          </button>
+        </div>
+
+        <p class="modal-copy">
+          You will be signed out of the portal and returned to the login screen.
+        </p>
+
+        <div class="modal__footer">
+          <button class="btn btn--ghost" data-close-modal="logoutModal" type="button">
+            Cancel
+          </button>
+          <button id="confirmLogoutBtn" class="btn btn--danger" type="button">
+            Log out
+          </button>
+        </div>
       </div>
     </div>
   </div>
-
-  <script src="/vendor/auth0-spa-js.production.js"></script>
-  <script src="/app.js"></script>
 </body>
 </html>
