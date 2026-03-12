@@ -954,6 +954,89 @@ pre {
   box-shadow: 0 0 0 4px rgba(201, 75, 75, 0.08) !important;
 }
 
+.announcementsList {
+  display: grid;
+  gap: 14px;
+  margin-top: 16px;
+}
+
+.announcementItem {
+  border: 1px solid var(--border);
+  background: var(--surface-soft);
+  border-radius: 14px;
+  padding: 16px;
+}
+
+.announcementTopRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.announcementTitle {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.announcementMeta {
+  margin: 8px 0 0;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.announcementText {
+  margin: 10px 0 0;
+  font-size: 14px;
+  color: var(--text);
+  line-height: 1.6;
+}
+
+.announcementBadge {
+  display: inline-flex;
+  align-items: center;
+  padding: 6px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+  border: 1px solid transparent;
+  white-space: nowrap;
+}
+
+.announcementLow {
+  background: #eef2f7;
+  color: #5f6c7b;
+  border-color: #e1e6ee;
+}
+
+.announcementNormal {
+  background: #eaf2ff;
+  color: #2f6fed;
+  border-color: #cfe0ff;
+}
+
+.announcementHigh {
+  background: #fff4e8;
+  color: #d9822b;
+  border-color: #f3dcc0;
+}
+
+.announcementUrgent {
+  background: #fdeeee;
+  color: #c94b4b;
+  border-color: #f1cccc;
+}
+
+.announcementEmpty {
+  padding: 4px 0;
+}
+
 @media (max-width: 900px) {
   .accountFormGrid {
     grid-template-columns: 1fr;
