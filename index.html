@@ -23,11 +23,13 @@
         download documents, and see property announcements.
       </p>
 
-      <button id="loginBtn" class="topbar-action">Log in</button>
+      <button id="loginBtn" class="topbar-action" type="button">Log in</button>
     </div>
   </div>
 
   <div id="app" class="app-shell hidden">
+    <div id="mobileSidebarOverlay" class="mobile-sidebar-overlay"></div>
+
     <aside class="sidebar">
       <div class="sidebar__top">
         <div class="brand">
@@ -80,7 +82,7 @@
     <div class="main-shell">
       <header class="topbar">
         <div class="topbar__left">
-          <button class="mobile-nav-toggle" id="mobileNavToggle" type="button">☰</button>
+          <button class="mobile-nav-toggle" id="mobileNavToggle" type="button" aria-label="Open navigation">☰</button>
           <div>
             <h1 class="page-title" id="pageTitle">Dashboard</h1>
             <p class="page-subtitle" id="pageSubtitle">Overview of your tenancy and latest activity</p>
@@ -132,6 +134,8 @@
               <div class="metric-card__meta">Next important date</div>
             </div>
           </div>
+
+          <div class="home-callout" id="homeCallout"></div>
 
           <div class="dashboard-grid">
             <section class="panel panel--large">
@@ -258,9 +262,10 @@
               </div>
 
               <div class="form-actions">
-                <button type="submit" class="topbar-action">Save changes</button>
+                <button id="profileSaveBtn" type="submit" class="topbar-action">Save changes</button>
               </div>
 
+              <div id="profileSavedAt" class="saved-at"></div>
               <div id="profileMessage" class="form-message" style="display:none;"></div>
             </form>
           </section>
@@ -304,10 +309,12 @@
         <div class="field" style="grid-column: 1 / -1;">
           <label for="photos">Photos</label>
           <input id="photos" name="photos" type="file" accept="image/jpeg,image/png,image/webp" multiple />
+          <div id="photoSelectionMeta" class="file-meta"></div>
+          <div id="photoSelectionList" class="file-chip-list"></div>
         </div>
 
         <div class="form-actions">
-          <button type="submit" class="topbar-action">Submit request</button>
+          <button id="maintenanceSubmitBtn" type="submit" class="topbar-action">Submit request</button>
         </div>
 
         <div id="maintenanceMsg" class="form-message" style="display:none;"></div>
@@ -336,6 +343,22 @@
           <span>Latest update</span>
           <strong id="maintenanceDetailUpdate">—</strong>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="logoutModal" class="modal">
+    <div class="modal__dialog modal__dialog--small">
+      <div class="panel__header">
+        <div>
+          <h2 class="panel__title">Log out</h2>
+          <p class="panel__subtitle">Are you sure you want to log out of the portal?</p>
+        </div>
+      </div>
+
+      <div class="modal-actions">
+        <button class="panel__action" type="button" data-close-modal="logoutModal">Cancel</button>
+        <button id="confirmLogoutBtn" class="topbar-action" type="button">Log out</button>
       </div>
     </div>
   </div>
