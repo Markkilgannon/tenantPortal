@@ -1,200 +1,258 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Tenant Portal</title>
-  <meta name="description" content="Tenant Portal" />
   <link rel="stylesheet" href="/styles.css" />
 </head>
-
 <body>
-  <div class="appShell">
+  <div id="app" class="app-shell hidden">
     <!-- Sidebar -->
     <aside class="sidebar">
-      <div class="sidebarBrand">
-        <div class="logo" aria-hidden="true"></div>
-        <div class="brandText">
-          <h1>Tenant Portal</h1>
-          <p>Your property account</p>
+      <div class="sidebar__top">
+        <div class="brand">
+          <div class="brand__mark">TP</div>
+          <div class="brand__text">
+            <div class="brand__name">Tenant Portal</div>
+            <div class="brand__sub">Property Console</div>
+          </div>
         </div>
       </div>
 
-      <div class="sidebarSection">
-        <p class="sidebarLabel">Navigation</p>
-        <nav class="sidebarNav" id="navBar" style="display:none;">
-  <button class="navItem tabBtn" data-panel="home" type="button">
-    <span class="navIcon">🏠</span>
-    <span>Home</span>
-  </button>
+      <nav class="sidebar__nav">
+        <button class="nav-item active" data-view="home">
+          <span class="nav-item__icon">⌂</span>
+          <span>Home</span>
+        </button>
 
-  <button class="navItem tabBtn" data-panel="maintenance" type="button">
-    <span class="navIcon">🔧</span>
-    <span>Maintenance</span>
-  </button>
+        <button class="nav-item" data-view="maintenance">
+          <span class="nav-item__icon">🛠</span>
+          <span>Maintenance</span>
+        </button>
 
-  <button class="navItem tabBtn" data-panel="docs" type="button">
-    <span class="navIcon">📄</span>
-    <span>Documents</span>
-  </button>
-          
-  <button class="navItem tabBtn" data-panel="account" type="button">
-  <span class="navIcon">👤</span>
-  <span>Account</span>
-</button>
-</nav>
+        <button class="nav-item" data-view="documents">
+          <span class="nav-item__icon">📄</span>
+          <span>Documents</span>
+        </button>
 
-      <div class="sidebarSection sidebarProperty">
-        <p class="sidebarLabel">Your property</p>
-       <div class="propertyMiniCard">
-  <p class="propertyMiniEyebrow">Current tenancy</p>
-  <p class="propertyMiniTitle" id="unitLine">Please log in to view your unit.</p>
-  <p class="propertyMiniMeta">Secure tenant access</p>
-</div>
-      </div>
+        <button class="nav-item" data-view="announcements">
+          <span class="nav-item__icon">🔔</span>
+          <span>Announcements</span>
+        </button>
 
-      <div class="sidebarFooter">
-        <button class="btn btn-primary" id="btnLogin" type="button">Login</button>
-        <button class="btn btn-secondary" id="btnLogout" type="button">Logout</button>
+        <button class="nav-item" data-view="profile">
+          <span class="nav-item__icon">👤</span>
+          <span>Profile</span>
+        </button>
+      </nav>
+
+      <div class="sidebar__bottom">
+        <div class="tenant-mini-card">
+          <div class="tenant-mini-card__label">Current tenancy</div>
+          <div class="tenant-mini-card__value" id="sidebarTenancyStatus">Active</div>
+          <div class="tenant-mini-card__meta" id="sidebarUnitName">Unit —</div>
+        </div>
+
+        <button id="logoutBtn" class="sidebar__logout">Log out</button>
       </div>
     </aside>
 
-    <!-- Main content -->
-    <main class="mainContent">
-      <header class="topHeader">
-  <div>
-    <p class="eyebrow">Tenant dashboard</p>
-    <h2 class="pageTitle">Your portal</h2>
-    <p class="pageSubtitle">
-      View your tenancy details, report maintenance issues and download important documents.
-    </p>
-  </div>
+    <!-- Main -->
+    <div class="main-shell">
+      <header class="topbar">
+        <div class="topbar__left">
+          <button class="mobile-nav-toggle" id="mobileNavToggle">☰</button>
+          <div>
+            <h1 class="page-title" id="pageTitle">Dashboard</h1>
+            <p class="page-subtitle" id="pageSubtitle">Overview of your tenancy and latest activity</p>
+          </div>
+        </div>
 
-        <div class="statusWrap">
-          <span class="statusPill">
-            <span class="dot" id="statusDot"></span>
-            <span id="statusText">Status: ready</span>
-          </span>
+        <div class="topbar__right">
+          <button class="topbar-action" id="quickMaintenanceBtn">New Request</button>
+          <div class="topbar-profile">
+            <div class="topbar-profile__avatar" id="profileInitials">MK</div>
+            <div class="topbar-profile__meta">
+              <div class="topbar-profile__name" id="profileNameTop">Tenant</div>
+              <div class="topbar-profile__email" id="profileEmailTop">tenant@email.com</div>
+            </div>
+          </div>
         </div>
       </header>
 
-      <!-- Home -->
-      <section id="panel-home" class="panel active">
-        <div id="homeCards" class="dashboardGrid">
-          <div class="dashboardCard">
-            <p class="cardLabel">Welcome</p>
-            <p class="cardTitle">Login to see your details</p>
-            <p class="cardText">Your property, lease and tenancy information will appear here.</p>
-          </div>
-        </div>
-      </section>
-
-      <!-- Maintenance -->
-      <section id="panel-maintenance" class="panel">
-        <div class="contentGrid">
-          <div class="contentCard formCard">
-            <div class="sectionHeader">
-              <h3>Submit a maintenance request</h3>
-              <p>Describe the issue clearly and add photos if needed.</p>
+      <main class="content">
+        <!-- Home -->
+        <section class="view active" id="view-home">
+          <div class="summary-grid">
+            <div class="metric-card">
+              <div class="metric-card__label">Open requests</div>
+              <div class="metric-card__value" id="metricOpenRequests">0</div>
+              <div class="metric-card__meta">Currently active</div>
             </div>
 
-            <form id="maintenanceForm">
-              <label for="subject">Subject</label>
-              <input id="subject" name="subject" placeholder="e.g. Heating not working" />
+            <div class="metric-card">
+              <div class="metric-card__label">Documents</div>
+              <div class="metric-card__value" id="metricDocuments">0</div>
+              <div class="metric-card__meta">Available to download</div>
+            </div>
 
-              <label for="description">Description</label>
-              <textarea id="description" name="description" placeholder="Give as much detail as possible..."></textarea>
+            <div class="metric-card">
+              <div class="metric-card__label">Tenancy status</div>
+              <div class="metric-card__value metric-card__value--small" id="metricTenancyStatus">Active</div>
+              <div class="metric-card__meta">Current agreement status</div>
+            </div>
 
-              <label for="photos">Photos (optional)</label>
-              <input id="photos" name="photos" type="file" multiple accept="image/*" />
+            <div class="metric-card">
+              <div class="metric-card__label">Lease end</div>
+              <div class="metric-card__value metric-card__value--small" id="metricLeaseEnd">—</div>
+              <div class="metric-card__meta">Next important date</div>
+            </div>
+          </div>
 
-              <div class="formActions">
-                <button class="btn btn-primary" type="submit">Submit request</button>
+          <div class="dashboard-grid">
+            <section class="panel panel--large">
+              <div class="panel__header">
+                <div>
+                  <h2 class="panel__title">Recent maintenance</h2>
+                  <p class="panel__subtitle">Latest requests and status updates</p>
+                </div>
+                <button class="panel__action" data-view-link="maintenance">View all</button>
+              </div>
+              <div id="recentMaintenanceList" class="stack-list"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel__header">
+                <div>
+                  <h2 class="panel__title">Announcements</h2>
+                  <p class="panel__subtitle">Important property updates</p>
+                </div>
+                <button class="panel__action" data-view-link="announcements">Open</button>
+              </div>
+              <div id="homeAnnouncements" class="stack-list"></div>
+            </section>
+
+            <section class="panel">
+              <div class="panel__header">
+                <div>
+                  <h2 class="panel__title">Tenancy details</h2>
+                  <p class="panel__subtitle">Current property information</p>
+                </div>
+              </div>
+              <div class="detail-list">
+                <div class="detail-row"><span>Name</span><strong id="tenantName">—</strong></div>
+                <div class="detail-row"><span>Email</span><strong id="tenantEmail">—</strong></div>
+                <div class="detail-row"><span>Phone</span><strong id="tenantPhone">—</strong></div>
+                <div class="detail-row"><span>Property</span><strong id="tenantProperty">—</strong></div>
+                <div class="detail-row"><span>Unit</span><strong id="tenantUnit">—</strong></div>
+                <div class="detail-row"><span>Lease</span><strong id="tenantLease">—</strong></div>
+              </div>
+            </section>
+
+            <section class="panel">
+              <div class="panel__header">
+                <div>
+                  <h2 class="panel__title">Quick actions</h2>
+                  <p class="panel__subtitle">Common portal tasks</p>
+                </div>
+              </div>
+              <div class="action-grid">
+                <button class="quick-action" id="qaMaintenance">Submit maintenance</button>
+                <button class="quick-action" id="qaDocuments">Open documents</button>
+                <button class="quick-action" id="qaAnnouncements">View announcements</button>
+                <button class="quick-action" id="qaProfile">Update profile</button>
+              </div>
+            </section>
+          </div>
+        </section>
+
+        <!-- Maintenance -->
+        <section class="view" id="view-maintenance">
+          <div class="toolbar">
+            <div class="toolbar__group">
+              <button class="filter-chip active" data-maintenance-filter="all">All</button>
+              <button class="filter-chip" data-maintenance-filter="open">Open</button>
+              <button class="filter-chip" data-maintenance-filter="in progress">In Progress</button>
+              <button class="filter-chip" data-maintenance-filter="waiting for contractor">Waiting</button>
+              <button class="filter-chip" data-maintenance-filter="completed">Completed</button>
+            </div>
+            <button class="topbar-action" id="maintenanceCreateBtn">New request</button>
+          </div>
+
+          <section class="panel">
+            <div class="panel__header">
+              <div>
+                <h2 class="panel__title">Maintenance requests</h2>
+                <p class="panel__subtitle">Track submitted issues and updates</p>
+              </div>
+            </div>
+            <div id="maintenanceList" class="stack-list"></div>
+          </section>
+        </section>
+
+        <!-- Documents -->
+        <section class="view" id="view-documents">
+          <section class="panel">
+            <div class="panel__header">
+              <div>
+                <h2 class="panel__title">Documents</h2>
+                <p class="panel__subtitle">Files available through your tenancy</p>
+              </div>
+            </div>
+            <div id="documentsList" class="stack-list"></div>
+          </section>
+        </section>
+
+        <!-- Announcements -->
+        <section class="view" id="view-announcements">
+          <section class="panel">
+            <div class="panel__header">
+              <div>
+                <h2 class="panel__title">Announcements</h2>
+                <p class="panel__subtitle">Building and tenancy notices</p>
+              </div>
+            </div>
+            <div id="announcementsList" class="stack-list"></div>
+          </section>
+        </section>
+
+        <!-- Profile -->
+        <section class="view" id="view-profile">
+          <section class="panel panel--form">
+            <div class="panel__header">
+              <div>
+                <h2 class="panel__title">Profile</h2>
+                <p class="panel__subtitle">Update your contact details</p>
+              </div>
+            </div>
+
+            <form id="profileForm" class="form-grid">
+              <div class="field">
+                <label for="profileEmail">Email</label>
+                <input id="profileEmail" name="profileEmail" type="email" />
               </div>
 
-              <p class="formMessage" id="maintenanceMsg"></p>
+              <div class="field">
+                <label for="profilePhone">Mobile phone</label>
+                <input id="profilePhone" name="profilePhone" type="tel" />
+              </div>
+
+              <div class="form-actions">
+                <button type="submit" class="topbar-action">Save changes</button>
+              </div>
             </form>
-          </div>
-
-          <div class="contentCard">
-            <div class="sectionHeader">
-              <h3>Your maintenance requests</h3>
-              <p>Track submitted issues and view updates.</p>
-            </div>
-
-<div class="maintenanceFilters" id="maintenanceFilters">
-  <button class="filterBtn active" data-filter="all">All</button>
-  <button class="filterBtn" data-filter="Open">Open</button>
-  <button class="filterBtn" data-filter="In Progress">In Progress</button>
-  <button class="filterBtn" data-filter="Waiting for Contractor">Waiting</button>
-  <button class="filterBtn" data-filter="Completed">Completed</button>
-</div>
-
-<div id="maintenanceList" class="maintenanceList"></div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Documents -->
-      <section id="panel-docs" class="panel">
-        <div class="contentCard">
-          <div class="sectionHeader">
-            <h3>Documents</h3>
-            <p>Lease, property and related documents available to you.</p>
-          </div>
-
-          <div id="docsList" class="stackList"></div>
-        </div>
-      </section>
-
-<section id="panel-account" class="panel">
-  <div class="contentCard">
-    <div class="sectionHeader">
-      <h3>Account</h3>
-      <p>View your profile and keep your contact details up to date.</p>
-    </div>
-
-    <div id="accountDetails" class="accountGrid"></div>
-
-    <div class="accountEditCard">
-      <div class="sectionHeader">
-        <h3>Update contact details</h3>
-        <p>These details help your landlord or property manager contact you when needed.</p>
-      </div>
-
-      <div id="accountBanner" class="accountBanner" style="display:none;"></div>
-
-      <form id="accountForm" novalidate>
-        <div class="accountFormGrid">
-          <div>
-            <label for="accountEmail">Email</label>
-            <input id="accountEmail" name="accountEmail" type="email" placeholder="Enter your email" />
-            <p class="fieldError" id="accountEmailError"></p>
-          </div>
-
-          <div>
-            <label for="accountPhone">Phone</label>
-            <input id="accountPhone" name="accountPhone" type="text" placeholder="Enter your phone number" />
-            <p class="fieldError" id="accountPhoneError"></p>
-          </div>
-        </div>
-
-        <div class="formActions">
-          <button class="btn btn-primary" type="submit">Save changes</button>
-          <button class="btn btn-secondary" type="button" id="accountResetBtn">Reset</button>
-        </div>
-      </form>
+          </section>
+        </section>
+      </main>
     </div>
   </div>
-</section>
 
-      
-      <!-- Hidden dev hook so existing JS doesn't break -->
-      <section class="devPanel">
-        <pre id="output" aria-live="polite">{ "hint": "Login to load your dashboard" }</pre>
-        <button class="btn" id="callApi" type="button">Call /api/me</button>
-      </section>
-    </main>
+  <div id="authLoading" class="auth-loading">
+    <div class="auth-loading__card">
+      <div class="auth-loading__spinner"></div>
+      <div class="auth-loading__text">Loading portal...</div>
+    </div>
   </div>
 
   <script src="/vendor/auth0-spa-js.production.js"></script>
