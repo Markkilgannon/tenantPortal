@@ -2,29 +2,18 @@
  * Tenant Portal (Cloudflare Pages)
  * - Auth0 SPA login (Auth0 SPA SDK v2)
  * - Calls Pages Functions (/api/*) with Bearer token
- * - Renders: Home dashboard, Maintenance, Docs
+ * - Stripe-style shell with sidebar navigation
  */
 
 // -------------------------
-// DOM helpers (safe)
+// DOM helpers
 // -------------------------
 const $ = (id) => document.getElementById(id);
 const has = (id) => Boolean($(id));
 
 const setText = (id, text) => {
   const el = $(id);
-  if (el) el.textContent = text;
-};
-
-const setHtml = (id, html) => {
-  const el = $(id);
-  if (el) el.innerHTML = html;
-};
-
-const show = (id, yes, displayStyle = "inline-block") => {
-  const el = $(id);
-  if (!el) return;
-  el.style.display = yes ? displayStyle : "none";
+  if (el) el.textContent = String(text ?? "");
 };
 
 const on = (id, evt, fn, opts) => {
@@ -35,13 +24,11 @@ const on = (id, evt, fn, opts) => {
 };
 
 // -------------------------
-// Config (yours)
+// Config
 // -------------------------
 const AUTH0_DOMAIN = "dev-v3g60bdgfjg7walx.us.auth0.com";
 const AUTH0_CLIENT_ID = "CXrASdTRNQKhDuJIFNvIR7wPwjAwjtCx";
 const AUTH0_AUDIENCE = "https://tenant-portal-api";
-
-// Must match Auth0 Allowed Callback/Logout/Web Origins
 const PORTAL_ORIGIN = window.location.origin;
 
 // -------------------------
@@ -49,106 +36,275 @@ const PORTAL_ORIGIN = window.location.origin;
 // -------------------------
 let auth0Client = null;
 let isBooted = false;
-let maintenanceItemsCache = [];
-let maintenanceFilter = "all";
-let announcementsCache = [];
-
-// Cache of /api/me response (includes Salesforce context)
 let portalContext = null;
+let maintenanceItemsCache = [];
+let documentsCache = [];
+let announcementsCache = [];
+let maintenanceFilter = "all";
 
 // -------------------------
 // Utilities
 // -------------------------
-function escapeHtml(s) {
-  return String(s ?? "").replace(/[&<>"']/g, (c) => ({
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>"']/g, (c) => ({
     "&": "&amp;",
     "<": "&lt;",
     ">": "&gt;",
     '"': "&quot;",
-    "'": "&#39;",
+    "'": "&#39;"
   }[c]));
 }
 
-function safeDate(d) {
-  try {
-    if (!d) return "";
-    const dt = new Date(d);
-    if (Number.isNaN(dt.getTime())) return String(d);
-    return dt.toLocaleString();
-  } catch {
-    return String(d || "");
-  }
+function formatDate(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric"
+  }).format(date);
+}
+
+function safeDateTime(value) {
+  if (!value) return "—";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "—";
+
+  return new Intl.DateTimeFormat("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  }).format(date);
+}
+
+function getInitials(name) {
+  if (!name) return "TP";
+  return name
+    .trim()
+    .split(/\s+/)
+    .map((part) => part[0])
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
 }
 
 function setStatus(message, kind = "info") {
-  setText("statusText", `Status: ${message}`);
+  const label = $("globalStatusText");
+  if (label) {
+    label.textContent = String(message || "");
+  }
 
-  const dot = $("statusDot");
+  const dot = $("globalStatusDot");
   if (!dot) return;
 
   const color =
-    kind === "ok" ? "rgba(124,240,197,0.95)" :
-    kind === "warn" ? "rgba(255, 209, 102, 0.95)" :
-    kind === "bad" ? "rgba(255, 107, 107, 0.95)" :
-    "rgba(255,255,255,0.35)";
+    kind === "ok" ? "#0f9f6e" :
+    kind === "warn" ? "#b7791f" :
+    kind === "bad" ? "#d14343" :
+    "#94a3b8";
 
   dot.style.background = color;
 }
 
-// -------------------------
-// Simple panels (Home/Maintenance/Docs)
-// -------------------------
-function setPanel(name) {
-  document.querySelectorAll(".panel").forEach((p) => p.classList.remove("active"));
-  const panel = $(`panel-${name}`);
-  if (panel) panel.classList.add("active");
+function showToast(message, kind = "info") {
+  const toast = $("toast");
+  const toastText = $("toastText");
+  if (!toast || !toastText) return;
 
-  document.querySelectorAll(".tabBtn").forEach((b) => {
-    b.classList.toggle("active", b.dataset.panel === name);
+  toastText.textContent = String(message || "");
+  toast.classList.remove("toast--info", "toast--success", "toast--error");
+  if (kind === "ok") {
+    toast.classList.add("toast--success");
+  } else if (kind === "bad") {
+    toast.classList.add("toast--error");
+  } else {
+    toast.classList.add("toast--info");
+  }
+
+  toast.classList.add("is-visible");
+
+  window.clearTimeout(showToast._timer);
+  showToast._timer = window.setTimeout(() => {
+    toast.classList.remove("is-visible");
+  }, 3200);
+}
+
+function setProfileMessage(message = "", kind = "info") {
+  const el = $("profileMessage");
+  if (!el) return;
+
+  el.textContent = message;
+  el.classList.remove("form-message--info", "form-message--success", "form-message--error");
+
+  if (!message) {
+    el.style.display = "none";
+    return;
+  }
+
+  el.style.display = "block";
+  if (kind === "ok") {
+    el.classList.add("form-message--success");
+  } else if (kind === "bad") {
+    el.classList.add("form-message--error");
+  } else {
+    el.classList.add("form-message--info");
+  }
+}
+
+function setMaintenanceMessage(message = "", kind = "info") {
+  const el = $("maintenanceMsg");
+  if (!el) return;
+
+  el.textContent = message;
+  el.classList.remove("form-message--info", "form-message--success", "form-message--error");
+
+  if (!message) {
+    el.style.display = "none";
+    return;
+  }
+
+  el.style.display = "block";
+  if (kind === "ok") {
+    el.classList.add("form-message--success");
+  } else if (kind === "bad") {
+    el.classList.add("form-message--error");
+  } else {
+    el.classList.add("form-message--info");
+  }
+}
+
+function validateEmail(email) {
+  if (!email) return true;
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function validatePhone(phone) {
+  if (!phone) return true;
+  return /^[0-9+()\-\s]{7,20}$/.test(phone);
+}
+
+// -------------------------
+// Page metadata / navigation
+// -------------------------
+const pageMeta = {
+  home: {
+    title: "Dashboard",
+    subtitle: "Overview of your tenancy and latest activity"
+  },
+  maintenance: {
+    title: "Maintenance",
+    subtitle: "Track issues, updates, and request history"
+  },
+  documents: {
+    title: "Documents",
+    subtitle: "Download files available through your tenancy"
+  },
+  announcements: {
+    title: "Announcements",
+    subtitle: "Important notices and property updates"
+  },
+  profile: {
+    title: "Profile",
+    subtitle: "Manage your contact details"
+  }
+};
+
+function setActiveView(viewName) {
+  document.querySelectorAll(".view").forEach((view) => {
+    view.classList.toggle("active", view.id === `view-${viewName}`);
+  });
+
+  document.querySelectorAll(".nav-item").forEach((item) => {
+    item.classList.toggle("active", item.dataset.view === viewName);
+  });
+
+  const meta = pageMeta[viewName] || pageMeta.home;
+  setText("pageTitle", meta.title);
+  setText("pageSubtitle", meta.subtitle);
+
+  const sidebar = document.querySelector(".sidebar");
+  if (sidebar) sidebar.classList.remove("is-open");
+}
+
+function initNavigation() {
+  document.querySelectorAll(".nav-item").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const view = btn.dataset.view;
+      setActiveView(view);
+
+      if (view === "maintenance") {
+        await loadMaintenance();
+      } else if (view === "documents") {
+        await loadDocuments();
+      } else if (view === "announcements") {
+        await loadAnnouncementsAndRender();
+      }
+    });
+  });
+
+  document.querySelectorAll("[data-view-link]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const view = btn.dataset.viewLink;
+      setActiveView(view);
+
+      if (view === "maintenance") {
+        await loadMaintenance();
+      } else if (view === "documents") {
+        await loadDocuments();
+      } else if (view === "announcements") {
+        await loadAnnouncementsAndRender();
+      }
+    });
+  });
+
+  on("mobileNavToggle", "click", () => {
+    document.querySelector(".sidebar")?.classList.toggle("is-open");
+  });
+
+  on("qaMaintenance", "click", async () => {
+    setActiveView("maintenance");
+    await loadMaintenance();
+  });
+
+  on("qaDocuments", "click", async () => {
+    setActiveView("documents");
+    await loadDocuments();
+  });
+
+  on("qaAnnouncements", "click", async () => {
+    setActiveView("announcements");
+    await loadAnnouncementsAndRender();
+  });
+
+  on("qaProfile", "click", () => {
+    setActiveView("profile");
+  });
+
+  on("quickMaintenanceBtn", "click", () => {
+    openMaintenanceModal();
+  });
+
+  on("maintenanceCreateBtn", "click", () => {
+    openMaintenanceModal();
   });
 }
 
-function initNav() {
-  const nav = $("navBar");
-  if (!nav) return;
+function initMaintenanceFilters() {
+  document.querySelectorAll("[data-maintenance-filter]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      maintenanceFilter = btn.dataset.maintenanceFilter || "all";
 
-  nav.addEventListener("click", async (e) => {
-    const btn = e.target.closest(".tabBtn");
-    if (!btn) return;
+      document.querySelectorAll("[data-maintenance-filter]").forEach((other) => {
+        other.classList.toggle("active", other === btn);
+      });
 
-    const panel = btn.dataset.panel;
-    if (!panel) return;
-
-    setPanel(panel);
-
-    // Lazy-load data for panels
-    if (panel === "maintenance") {
-      await loadMaintenance().catch(console.error);
-    } else if (panel === "docs") {
-      await loadDocs().catch(console.error);
-    }
+      renderFilteredMaintenance();
+    });
   });
-
-
-  function groupDocuments(docs) {
-  const groups = {
-    Lease: [],
-    Property: [],
-    Unit: [],
-    Other: []
-  };
-
-  docs.forEach((doc) => {
-    const key = doc.sourceType || "Other";
-    if (!groups[key]) groups[key] = [];
-    groups[key].push(doc);
-  });
-
-  return groups;
-}
-
-  // Default
-  setPanel("home");
 }
 
 // -------------------------
@@ -156,16 +312,16 @@ function initNav() {
 // -------------------------
 async function requireAuth0Client() {
   const factory =
-    (window.auth0 && typeof window.auth0.createAuth0Client === "function")
+    window.auth0 && typeof window.auth0.createAuth0Client === "function"
       ? window.auth0.createAuth0Client
       : null;
 
   if (!factory) {
-    throw new Error("Auth0 SPA SDK not loaded. window.auth0.createAuth0Client is missing.");
+    throw new Error("Auth0 SPA SDK not loaded.");
   }
 
   if (!auth0Client) {
-    auth0Client = await window.auth0.createAuth0Client({
+    auth0Client = await factory({
       domain: AUTH0_DOMAIN,
       clientId: AUTH0_CLIENT_ID,
       authorizationParams: {
@@ -197,8 +353,8 @@ async function login() {
     authorizationParams: {
       redirect_uri: PORTAL_ORIGIN,
       audience: AUTH0_AUDIENCE,
-      scope: "openid profile email",
-    },
+      scope: "openid profile email"
+    }
   });
 }
 
@@ -206,22 +362,22 @@ async function logout() {
   await requireAuth0Client();
   setStatus("Logging out…", "warn");
   await auth0Client.logout({
-    logoutParams: { returnTo: PORTAL_ORIGIN },
+    logoutParams: { returnTo: PORTAL_ORIGIN }
   });
 }
 
 async function isAuthenticated() {
   await requireAuth0Client();
-  return await auth0Client.isAuthenticated();
+  return auth0Client.isAuthenticated();
 }
 
 async function getAccessToken() {
   await requireAuth0Client();
-  return await auth0Client.getTokenSilently({
+  return auth0Client.getTokenSilently({
     authorizationParams: {
       audience: AUTH0_AUDIENCE,
-      scope: "openid profile email",
-    },
+      scope: "openid profile email"
+    }
   });
 }
 
@@ -268,423 +424,241 @@ async function api(path, opts = {}) {
   return data;
 }
 
-function announcementPriorityClass(priority) {
-  const p = String(priority || "").toLowerCase().trim();
+// -------------------------
+// Shell population
+// -------------------------
+function applyTenantProfileToShell(data) {
+  const fullName = data?.name || "Tenant";
+  const email = data?.email || "—";
+  const phone = data?.phone || "—";
+  const property = data?.propertyName || "—";
+  const unit = data?.unitName || "—";
+  const lease = data?.leaseName || "—";
+  const tenancyStatus = data?.tenancyStatus || "—";
+  const leaseEnd = data?.leaseEndDate || "—";
 
-  if (p === "urgent") return "announcementBadge announcementUrgent";
-  if (p === "high") return "announcementBadge announcementHigh";
-  if (p === "normal") return "announcementBadge announcementNormal";
-  if (p === "low") return "announcementBadge announcementLow";
+  setText("profileNameTop", fullName);
+  setText("profileEmailTop", email);
+  setText("profileInitials", getInitials(fullName));
 
-  return "announcementBadge announcementNormal";
-}
+  setText("tenantName", fullName);
+  setText("tenantEmail", email);
+  setText("tenantPhone", phone);
+  setText("tenantProperty", property);
+  setText("tenantUnit", unit);
+  setText("tenantLease", lease);
 
-function formatAnnouncementWindow(startDateTime, endDateTime) {
-  const start = startDateTime ? safeDate(startDateTime) : "";
-  const end = endDateTime ? safeDate(endDateTime) : "";
+  setText("metricTenancyStatus", tenancyStatus);
+  setText("metricLeaseEnd", leaseEnd);
+  setText("sidebarTenancyStatus", tenancyStatus);
+  setText("sidebarUnitName", unit !== "—" ? unit : "Unit —");
 
-  if (start && end) return `${start} → ${end}`;
-  if (start) return `Starts: ${start}`;
-  if (end) return `Until: ${end}`;
-  return "";
-}
-
-const pageMeta = {
-  home: {
-    title: "Dashboard",
-    subtitle: "Overview of your tenancy and latest activity"
-  },
-  maintenance: {
-    title: "Maintenance",
-    subtitle: "Track issues, updates, and request history"
-  },
-  documents: {
-    title: "Documents",
-    subtitle: "Download files available through your tenancy"
-  },
-  announcements: {
-    title: "Announcements",
-    subtitle: "Important notices and property updates"
-  },
-  profile: {
-    title: "Profile",
-    subtitle: "Manage your contact details"
-  }
-};
-
-function setActiveView(viewName) {
-  document.querySelectorAll(".view").forEach(view => {
-    view.classList.toggle("active", view.id === `view-${viewName}`);
-  });
-
-  document.querySelectorAll(".nav-item").forEach(item => {
-    item.classList.toggle("active", item.dataset.view === viewName);
-  });
-
-  const meta = pageMeta[viewName] || pageMeta.home;
-  document.getElementById("pageTitle").textContent = meta.title;
-  document.getElementById("pageSubtitle").textContent = meta.subtitle;
-
-  const sidebar = document.querySelector(".sidebar");
-  if (sidebar) sidebar.classList.remove("is-open");
-}
-
-function initNavigation() {
-  document.querySelectorAll(".nav-item").forEach(btn => {
-    btn.addEventListener("click", () => {
-      setActiveView(btn.dataset.view);
-    });
-  });
-
-  document.querySelectorAll("[data-view-link]").forEach(btn => {
-    btn.addEventListener("click", () => {
-      setActiveView(btn.dataset.viewLink);
-    });
-  });
-
-  const mobileNavToggle = document.getElementById("mobileNavToggle");
-  if (mobileNavToggle) {
-    mobileNavToggle.addEventListener("click", () => {
-      document.querySelector(".sidebar")?.classList.toggle("is-open");
-    });
-  }
-
-  document.getElementById("qaMaintenance")?.addEventListener("click", () => setActiveView("maintenance"));
-  document.getElementById("qaDocuments")?.addEventListener("click", () => setActiveView("documents"));
-  document.getElementById("qaAnnouncements")?.addEventListener("click", () => setActiveView("announcements"));
-  document.getElementById("qaProfile")?.addEventListener("click", () => setActiveView("profile"));
-  document.getElementById("quickMaintenanceBtn")?.addEventListener("click", () => setActiveView("maintenance"));
-}
-
-function getInitials(name) {
-  if (!name) return "TP";
-  return name
-    .split(" ")
-    .map(part => part[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-}
-
-function applyTenantProfileToShell(me) {
-  const fullName = me?.name || "Tenant";
-  const email = me?.email || "—";
-  const phone = me?.phone || "—";
-  const property = me?.propertyName || "—";
-  const unit = me?.unitName || "—";
-  const lease = me?.leaseName || "—";
-  const tenancyStatus = me?.tenancyStatus || "—";
-  const leaseEnd = me?.leaseEndDate || "—";
-
-  document.getElementById("profileNameTop").textContent = fullName;
-  document.getElementById("profileEmailTop").textContent = email;
-  document.getElementById("profileInitials").textContent = getInitials(fullName);
-
-  document.getElementById("tenantName").textContent = fullName;
-  document.getElementById("tenantEmail").textContent = email;
-  document.getElementById("tenantPhone").textContent = phone;
-  document.getElementById("tenantProperty").textContent = property;
-  document.getElementById("tenantUnit").textContent = unit;
-  document.getElementById("tenantLease").textContent = lease;
-
-  document.getElementById("metricTenancyStatus").textContent = tenancyStatus;
-  document.getElementById("metricLeaseEnd").textContent = leaseEnd;
-  document.getElementById("sidebarTenancyStatus").textContent = tenancyStatus;
-  document.getElementById("sidebarUnitName").textContent = unit !== "—" ? unit : "Unit —";
-
-  const profileEmailField = document.getElementById("profileEmail");
-  const profilePhoneField = document.getElementById("profilePhone");
+  const profileEmailField = $("profileEmail");
+  const profilePhoneField = $("profilePhone");
 
   if (profileEmailField) profileEmailField.value = email === "—" ? "" : email;
   if (profilePhoneField) profilePhoneField.value = phone === "—" ? "" : phone;
 }
-// -------------------------
-// Home dashboard renderer
-// -------------------------
-function renderHome() {
-  const el = $("homeCards");
-  if (!el) return;
 
-  const ctx = portalContext?.sf?.ok !== false ? portalContext.sf : null;
+function updateDashboardMetrics() {
+  const openCount = maintenanceItemsCache.filter(
+    (item) => (item.status || "").toLowerCase() !== "completed"
+  ).length;
 
-  if (!ctx) {
-    el.innerHTML = `
-      <div class="dashboardCard dashboardCardWide">
-        <p class="cardLabel">Welcome</p>
-        <p class="cardTitle">Login to access your portal</p>
-        <p class="cardText">View your property details, submit maintenance requests and download important documents.</p>
+  setText("metricOpenRequests", openCount);
+  setText("metricDocuments", documentsCache.length);
+}
+
+// -------------------------
+// Rendering
+// -------------------------
+function normaliseStatusClass(status) {
+  const value = String(status || "").toLowerCase();
+  if (value === "open") return "badge badge--open";
+  if (value === "in progress") return "badge badge--in-progress";
+  if (value === "waiting for contractor") return "badge badge--waiting";
+  if (value === "completed") return "badge badge--completed";
+  return "badge badge--neutral";
+}
+
+function renderMaintenanceItems(items, targetId) {
+  const container = $(targetId);
+  if (!container) return;
+
+  if (!items || !items.length) {
+    container.innerHTML = `
+      <div class="list-item">
+        <div class="list-item__body">No maintenance requests found.</div>
       </div>
     `;
     return;
   }
 
-  const tenant = ctx.tenant || {};
-  const unit = ctx.unit || {};
-  const lease = ctx.lease || {};
-  const tenancy = ctx.tenancy || {};
-
-  const maintenanceItems = Array.isArray(portalContext?.maintenancePreview)
-    ? portalContext.maintenancePreview
-    : [];
-
-  const docsItems = Array.isArray(portalContext?.docsPreview)
-    ? portalContext.docsPreview
-    : [];
-
-  const announcements = Array.isArray(announcementsCache)
-    ? announcementsCache.slice(0, 3)
-    : [];
-
-  const latestMaintenance = maintenanceItems.length ? maintenanceItems[0] : null;
-
-  const announcementsHtml = announcements.length
-    ? announcements.map((a) => `
-        <div class="announcementItem">
-          <div class="announcementTopRow">
-            <p class="announcementTitle">${escapeHtml(a.title || "Announcement")}</p>
-            ${a.priority ? `<span class="${announcementPriorityClass(a.priority)}">${escapeHtml(a.priority)}</span>` : ""}
+  container.innerHTML = items.map((item, index) => `
+    <article class="list-item" data-status="${escapeHtml((item.status || "").toLowerCase())}">
+      <div class="list-item__top">
+        <div>
+          <h3 class="list-item__title">${escapeHtml(item.subject || "Untitled request")}</h3>
+          <div class="list-item__meta">
+            Submitted ${formatDate(item.createdDate)}
           </div>
-          ${a.startDateTime || a.endDateTime ? `
-            <p class="announcementMeta">
-              ${escapeHtml(formatAnnouncementWindow(a.startDateTime, a.endDateTime))}
-            </p>
-          ` : ""}
-          <p class="announcementText">${escapeHtml(a.message || "")}</p>
         </div>
-      `).join("")
-    : `
-      <div class="announcementEmpty">
-        <p class="cardText">There are no active announcements right now.</p>
+        <span class="${normaliseStatusClass(item.status)}">${escapeHtml(item.status || "Unknown")}</span>
+      </div>
+      <div class="list-item__body">
+        ${escapeHtml(item.portalUpdate || item.description || "No additional details yet.")}
+      </div>
+      <div class="list-item__footer">
+        <button class="panel__action" type="button" data-maintenance-index="${index}">
+          View details
+        </button>
+      </div>
+    </article>
+  `).join("");
+
+  container.querySelectorAll("[data-maintenance-index]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const idx = Number(btn.dataset.maintenanceIndex);
+      const item = items[idx];
+      if (item) openMaintenanceDetail(item);
+    });
+  });
+}
+
+function renderFilteredMaintenance() {
+  const value = maintenanceFilter.toLowerCase();
+  const filtered = value === "all"
+    ? maintenanceItemsCache
+    : maintenanceItemsCache.filter(
+        (item) => String(item.status || "").toLowerCase() === value
+      );
+
+  renderMaintenanceItems(filtered, "maintenanceList");
+}
+
+function renderAnnouncements(items, targetId) {
+  const container = $(targetId);
+  if (!container) return;
+
+  if (!items || !items.length) {
+    container.innerHTML = `
+      <div class="list-item">
+        <div class="list-item__body">No announcements right now.</div>
       </div>
     `;
+    return;
+  }
 
-  el.innerHTML = `
-    <div class="summaryCard">
-      <p class="summaryLabel">Open Requests</p>
-      <p class="summaryValue">${maintenanceItems.length}</p>
-      <p class="summaryText">Maintenance requests currently visible in your portal.</p>
-    </div>
-
-    <div class="summaryCard">
-      <p class="summaryLabel">Documents</p>
-      <p class="summaryValue">${docsItems.length}</p>
-      <p class="summaryText">Files available for download.</p>
-    </div>
-
-    <div class="summaryCard">
-      <p class="summaryLabel">Tenancy</p>
-      <p class="summaryValue summaryValueText">${escapeHtml(tenancy.status || "—")}</p>
-      <p class="summaryText">Your current tenancy status.</p>
-    </div>
-
-    <div class="dashboardCard">
-      <p class="cardLabel">Tenant</p>
-      <p class="cardTitle">${escapeHtml(tenant.name || "Tenant")}</p>
-      <p class="cardText">${escapeHtml(tenant.email || "No email available")}</p>
-      <p class="cardText">${escapeHtml(tenant.phone || "No phone available")}</p>
-    </div>
-
-    <div class="dashboardCard">
-      <p class="cardLabel">Your Home</p>
-      <p class="cardTitle">${escapeHtml(unit.propertyName || "Property")}</p>
-      <p class="cardText">Unit: ${escapeHtml(unit.name || "—")}</p>
-      <p class="cardText">Tenancy: ${escapeHtml(tenancy.status || "—")}</p>
-    </div>
-
-    <div class="dashboardCard">
-      <p class="cardLabel">Lease</p>
-      <p class="cardTitle">${escapeHtml(lease.name || "Lease")}</p>
-      <p class="cardText">${escapeHtml(lease.startDate || "?")} → ${escapeHtml(lease.endDate || "?")}</p>
-      <p class="cardText">Status: ${escapeHtml(lease.status || "—")}</p>
-    </div>
-
-    <div class="dashboardCard">
-      <p class="cardLabel">Quick actions</p>
-      <p class="cardTitle">What would you like to do?</p>
-      <p class="cardText">Use the shortcuts below to manage your tenancy.</p>
-
-      <div class="quickActionRow">
-        <button type="button" class="btn btn-primary" id="homeGoMaintenance">Submit maintenance</button>
-        <button type="button" class="btn btn-secondary" id="homeGoDocs">View documents</button>
+  container.innerHTML = items.map((item) => `
+    <article class="list-item">
+      <div class="list-item__top">
+        <div>
+          <h3 class="list-item__title">${escapeHtml(item.title || "Announcement")}</h3>
+          <div class="list-item__meta">
+            ${escapeHtml(item.category || "General")}${item.scope ? ` • ${escapeHtml(item.scope)}` : ""}
+          </div>
+        </div>
+        <span class="badge badge--neutral">${escapeHtml(item.priority || "Info")}</span>
       </div>
-    </div>
+      <div class="list-item__body">
+        ${escapeHtml(item.message || "")}
+      </div>
+      <div class="list-item__meta" style="margin-top:10px;">
+        ${item.startDateTime || item.endDateTime
+          ? `Active ${escapeHtml(safeDateTime(item.startDateTime))}${item.endDateTime ? ` to ${escapeHtml(safeDateTime(item.endDateTime))}` : ""}`
+          : ""}
+      </div>
+    </article>
+  `).join("");
+}
 
-    <div class="dashboardCard dashboardCardWide">
-      <p class="cardLabel">Latest activity</p>
-      ${
-        latestMaintenance
-          ? `
-            <p class="cardTitle">${escapeHtml(latestMaintenance.subject || "Maintenance request")}</p>
-            <p class="cardText">Status: ${escapeHtml(latestMaintenance.status || "Open")}</p>
-            <p class="cardText">Submitted: ${escapeHtml(safeDate(latestMaintenance.createdDate))}</p>
-            ${
-              latestMaintenance.portalUpdate
-                ? `<p class="cardText">Latest update: ${escapeHtml(latestMaintenance.portalUpdate)}</p>`
-                : `<p class="cardText">No update has been added yet.</p>`
-            }
-          `
-          : `
-            <p class="cardTitle">No recent activity</p>
-            <p class="cardText">Your latest maintenance updates will appear here.</p>
-          `
+function renderDocuments(items) {
+  const container = $("documentsList");
+  if (!container) return;
+
+  if (!items || !items.length) {
+    container.innerHTML = `
+      <div class="list-item">
+        <div class="list-item__body">No documents available.</div>
+      </div>
+    `;
+    return;
+  }
+
+  container.innerHTML = items.map((doc, index) => `
+    <article class="list-item">
+      <div class="list-item__top">
+        <div>
+          <h3 class="list-item__title">${escapeHtml(doc.title || doc.fileName || "Document")}</h3>
+          <div class="list-item__meta">
+            ${escapeHtml(doc.fileType || doc.type || "File")}
+            ${doc.lastModified ? ` • ${formatDate(doc.lastModified)}` : ""}
+          </div>
+        </div>
+        <button class="panel__action" type="button" data-document-index="${index}">
+          Download
+        </button>
+      </div>
+      <div class="list-item__body">
+        ${escapeHtml(doc.sourceLabel || doc.scopeLabel || "Available through your tenancy")}
+      </div>
+    </article>
+  `).join("");
+
+  container.querySelectorAll("[data-document-index]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const idx = Number(btn.dataset.documentIndex);
+      const doc = items[idx];
+      if (doc) await downloadDocument(doc);
+    });
+  });
+}
+
+// -------------------------
+// Detail / modal handling
+// -------------------------
+function openMaintenanceDetail(item) {
+  setText("maintenanceDetailTitle", item.subject || "Maintenance request");
+  setText("maintenanceDetailStatus", item.status || "Unknown");
+  setText("maintenanceDetailSubmitted", safeDateTime(item.createdDate));
+  setText("maintenanceDetailDescription", item.description || "No description provided.");
+  setText("maintenanceDetailUpdate", item.portalUpdate || "No update has been added yet.");
+
+  const modal = $("maintenanceDetailModal");
+  if (modal) modal.classList.add("is-open");
+}
+
+function closeMaintenanceDetail() {
+  $("maintenanceDetailModal")?.classList.remove("is-open");
+}
+
+function openMaintenanceModal() {
+  $("maintenanceModal")?.classList.add("is-open");
+  setMaintenanceMessage("", "info");
+  $("subject")?.focus();
+}
+
+function closeMaintenanceModal() {
+  $("maintenanceModal")?.classList.remove("is-open");
+}
+
+function initModalControls() {
+  document.querySelectorAll("[data-close-modal]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const target = btn.dataset.closeModal;
+      $(target)?.classList.remove("is-open");
+    });
+  });
+
+  document.querySelectorAll(".modal").forEach((modal) => {
+    modal.addEventListener("click", (e) => {
+      if (e.target === modal) {
+        modal.classList.remove("is-open");
       }
-    </div>
-
-    <div class="dashboardCard dashboardCardWide">
-      <p class="cardLabel">Announcements</p>
-      <p class="cardTitle">Property notices</p>
-      <div class="announcementsList">
-        ${announcementsHtml}
-      </div>
-    </div>
-  `;
-
-  const btnMaintenance = $("homeGoMaintenance");
-  if (btnMaintenance) {
-    btnMaintenance.addEventListener("click", async () => {
-      setPanel("maintenance");
-      await loadMaintenance().catch(console.error);
     });
-  }
-
-  const btnDocs = $("homeGoDocs");
-  if (btnDocs) {
-    btnDocs.addEventListener("click", async () => {
-      setPanel("docs");
-      await loadDocs().catch(console.error);
-    });
-  }
+  });
 }
 
-function setAccountBanner(message = "", type = "") {
-  const banner = $("accountBanner");
-  if (!banner) return;
-
-  if (!message) {
-    banner.style.display = "none";
-    banner.className = "accountBanner";
-    banner.textContent = "";
-    return;
-  }
-
-  banner.style.display = "block";
-  banner.className = `accountBanner ${type === "error" ? "accountBannerError" : "accountBannerSuccess"}`;
-  banner.textContent = message;
-}
-
-function setFieldError(fieldId, errorId, message = "") {
-  const field = $(fieldId);
-  const error = $(errorId);
-
-  if (field) {
-    field.classList.toggle("inputError", Boolean(message));
-  }
-
-  if (error) {
-    error.textContent = message;
-  }
-}
-
-function validateAccountForm(email, phone) {
-  let valid = true;
-
-  setFieldError("accountEmail", "accountEmailError", "");
-  setFieldError("accountPhone", "accountPhoneError", "");
-
-  const trimmedEmail = String(email || "").trim();
-  const trimmedPhone = String(phone || "").trim();
-
-  if (trimmedEmail) {
-    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmedEmail);
-    if (!emailOk) {
-      setFieldError("accountEmail", "accountEmailError", "Enter a valid email address.");
-      valid = false;
-    }
-  }
-
-  if (trimmedPhone) {
-    const phoneOk = /^[0-9+()\-\s]{7,20}$/.test(trimmedPhone);
-    if (!phoneOk) {
-      setFieldError("accountPhone", "accountPhoneError", "Enter a valid phone number.");
-      valid = false;
-    }
-  }
-
-  return valid;
-}
-
-function resetAccountFormFromContext() {
-  const tenant = portalContext?.sf?.tenant || {};
-
-  if ($("accountEmail")) $("accountEmail").value = tenant.email || "";
-  if ($("accountPhone")) $("accountPhone").value = tenant.phone || "";
-
-  setFieldError("accountEmail", "accountEmailError", "");
-  setFieldError("accountPhone", "accountPhoneError", "");
-  setAccountBanner("", "");
-}
-
-function renderAccount() {
-  const el = $("accountDetails");
-  if (!el) return;
-
-  const ctx = portalContext?.sf?.ok !== false ? portalContext.sf : null;
-
-  if (!ctx) {
-    el.innerHTML = `
-      <div class="itemCard">
-        <p class="itemTitle">Account</p>
-        <p class="itemMeta">Login to view your profile details.</p>
-      </div>
-    `;
-
-    if ($("accountEmail")) $("accountEmail").value = "";
-    if ($("accountPhone")) $("accountPhone").value = "";
-    setAccountBanner("", "");
-    return;
-  }
-
-  const tenant = ctx.tenant || {};
-  const unit = ctx.unit || {};
-  const lease = ctx.lease || {};
-  const tenancy = ctx.tenancy || {};
-
-  el.innerHTML = `
-    <div class="accountFieldCard">
-      <p class="accountFieldLabel">Full name</p>
-      <p class="accountFieldValue">${escapeHtml(tenant.name || "—")}</p>
-    </div>
-
-    <div class="accountFieldCard">
-      <p class="accountFieldLabel">Email</p>
-      <p class="accountFieldValue">${escapeHtml(tenant.email || "—")}</p>
-    </div>
-
-    <div class="accountFieldCard">
-      <p class="accountFieldLabel">Phone</p>
-      <p class="accountFieldValue">${escapeHtml(tenant.phone || "—")}</p>
-    </div>
-
-    <div class="accountFieldCard">
-      <p class="accountFieldLabel">Property</p>
-      <p class="accountFieldValue">${escapeHtml(unit.propertyName || "—")}</p>
-      <p class="accountFieldSubvalue">Unit: ${escapeHtml(unit.name || "—")}</p>
-    </div>
-
-    <div class="accountFieldCard">
-      <p class="accountFieldLabel">Lease</p>
-      <p class="accountFieldValue">${escapeHtml(lease.name || "—")}</p>
-      <p class="accountFieldSubvalue">${escapeHtml(lease.startDate || "?")} → ${escapeHtml(lease.endDate || "?")}</p>
-    </div>
-
-    <div class="accountFieldCard">
-      <p class="accountFieldLabel">Tenancy status</p>
-      <p class="accountFieldValue">${escapeHtml(tenancy.status || "—")}</p>
-    </div>
-  `;
-
-  resetAccountFormFromContext();
-}
 // -------------------------
 // Loaders
 // -------------------------
@@ -709,285 +683,91 @@ async function loadMe() {
 
   applyTenantProfileToShell(shellProfile);
 
-  const [maintenance, docs, announcements] = await Promise.all([
-    api("/api/maintenance").catch(() => []),
-    api("/api/docs").catch(() => []),
-    api("/api/announcements").catch(() => [])
+  await Promise.all([
+    loadMaintenance(true),
+    loadDocuments(true),
+    loadAnnouncementsAndRender(true)
   ]);
 
-  maintenanceItemsCache = Array.isArray(maintenance) ? maintenance : [];
-  announcementsCache = Array.isArray(announcements) ? announcements : [];
-
-  renderMaintenanceItems(maintenanceItemsCache, "maintenanceList");
-  renderMaintenanceItems(maintenanceItemsCache.slice(0, 3), "recentMaintenanceList");
-  renderDocuments(Array.isArray(docs) ? docs : []);
-  renderAnnouncements(announcementsCache, "announcementsList");
-  renderAnnouncements(announcementsCache.slice(0, 3), "homeAnnouncements");
-
-  setText("metricDocuments", Array.isArray(docs) ? docs.length : 0);
-
-  const openCount = maintenanceItemsCache.filter(
-    item => (item.status || "").toLowerCase() !== "completed"
-  ).length;
-
-  setText("metricOpenRequests", openCount);
-
+  updateDashboardMetrics();
   setStatus("Ready", "ok");
 }
-function statusClass(status) {
-  const s = String(status || "").toLowerCase().trim();
 
-  if (s === "completed") return "statusBadge statusCompleted";
-  if (s === "in progress") return "statusBadge statusInProgress";
-  if (s === "waiting for contractor") return "statusBadge statusWaiting";
-  return "statusBadge statusOpen";
-}
-
-async function loadMaintenance() {
-  const wrap = $("maintenanceList");
-  if (!wrap) return;
-
-  setStatus("Loading maintenance…", "warn");
-  wrap.innerHTML = "";
+async function loadMaintenance(skipStatusMessage = false) {
+  if (!skipStatusMessage) setStatus("Loading maintenance…", "warn");
 
   try {
-    maintenanceItemsCache = await api("/api/maintenance");
+    const items = await api("/api/maintenance");
+    maintenanceItemsCache = Array.isArray(items) ? items : [];
 
-    if (portalContext) {
-      portalContext.maintenancePreview = Array.isArray(maintenanceItemsCache)
-        ? maintenanceItemsCache
-        : [];
-    }
+    renderFilteredMaintenance();
+    renderMaintenanceItems(maintenanceItemsCache.slice(0, 3), "recentMaintenanceList");
+    updateDashboardMetrics();
 
-    updateMaintenanceFilterCounts();
-    renderMaintenanceList();
-    setStatus("Maintenance ready", "ok");
+    if (!skipStatusMessage) setStatus("Maintenance ready", "ok");
   } catch (e) {
-    console.error("Maintenance list unavailable:", e);
-    wrap.innerHTML = `
-      <div class="maintenanceCard emptyStateCard">
-        <div class="maintenanceMain">
-          <p class="itemTitle">Maintenance unavailable</p>
-          <p class="itemMeta">Maintenance requests aren’t available right now.</p>
-        </div>
-      </div>
-    `;
-    setStatus("Maintenance ready", "warn");
+    console.error("Maintenance unavailable:", e);
+    maintenanceItemsCache = [];
+    renderFilteredMaintenance();
+    renderMaintenanceItems([], "recentMaintenanceList");
+
+    if (!skipStatusMessage) setStatus("Maintenance unavailable", "warn");
   }
 }
 
-function updateMaintenanceFilterCounts() {
-  const container = $("maintenanceFilters");
-  if (!container) return;
-
-  const items = Array.isArray(maintenanceItemsCache) ? maintenanceItemsCache : [];
-
-  const counts = {
-    all: items.length,
-    Open: 0,
-    "In Progress": 0,
-    "Waiting for Contractor": 0,
-    Completed: 0
-  };
-
-  items.forEach((item) => {
-    const status = item?.status;
-    if (Object.prototype.hasOwnProperty.call(counts, status)) {
-      counts[status] += 1;
-    }
-  });
-
-  container.querySelectorAll(".filterBtn").forEach((btn) => {
-    const filter = btn.dataset.filter;
-    let label = "";
-
-    if (filter === "all") {
-      label = `All (${counts.all})`;
-    } else if (filter === "Open") {
-      label = `Open (${counts.Open})`;
-    } else if (filter === "In Progress") {
-      label = `In Progress (${counts["In Progress"]})`;
-    } else if (filter === "Waiting for Contractor") {
-      label = `Waiting (${counts["Waiting for Contractor"]})`;
-    } else if (filter === "Completed") {
-      label = `Completed (${counts.Completed})`;
-    } else {
-      label = filter;
-    }
-
-    btn.textContent = label;
-  });
-}
-
-function renderMaintenanceList() {
-  const wrap = $("maintenanceList");
-  if (!wrap) return;
-
-  wrap.innerHTML = "";
-
-  let items = Array.isArray(maintenanceItemsCache) ? maintenanceItemsCache : [];
-  updateMaintenanceFilterCounts();
-
-
-  if (maintenanceFilter !== "all") {
-    items = items.filter((i) => i.status === maintenanceFilter);
-  }
-
-  if (!items.length) {
-    wrap.innerHTML = `
-      <div class="maintenanceCard emptyStateCard">
-        <div class="maintenanceMain">
-          <p class="itemTitle">No maintenance requests found</p>
-          <p class="itemMeta">There are no requests for the selected filter.</p>
-        </div>
-      </div>
-    `;
-    return;
-  }
-
-  items.forEach((i) => {
-    const el = document.createElement("div");
-    el.className = "maintenanceCard";
-
-    el.innerHTML = `
-      <div class="maintenanceHeader">
-        <div class="maintenanceMain">
-          <p class="itemTitle">${escapeHtml(i.subject || "(No subject)")}</p>
-          <p class="itemMeta">Submitted: ${escapeHtml(safeDate(i.createdDate))}</p>
-        </div>
-        <div class="maintenanceSide">
-          <span class="${statusClass(i.status)}">${escapeHtml(i.status || "Open")}</span>
-        </div>
-      </div>
-
-      ${i.portalUpdate ? `
-        <div class="maintenanceUpdateBox">
-          <p class="detailLabel">Latest update</p>
-          <p class="itemMeta">${escapeHtml(i.portalUpdate)}</p>
-        </div>
-      ` : ""}
-
-      <div class="maintenanceDescription">
-        <p class="detailLabel">Description</p>
-        <p class="itemMeta">${escapeHtml(i.description || "No description provided.")}</p>
-      </div>
-    `;
-
-    wrap.appendChild(el);
-  });
-}
-async function loadDocs() {
-  const wrap = $("docsList");
-  if (!wrap) return;
-
-  setStatus("Loading documents…", "warn");
-  wrap.innerHTML = "";
+async function loadDocuments(skipStatusMessage = false) {
+  if (!skipStatusMessage) setStatus("Loading documents…", "warn");
 
   try {
-    const docs = await api("/api/docs");
+    const items = await api("/api/docs");
+    documentsCache = Array.isArray(items) ? items : [];
+    renderDocuments(documentsCache);
+    updateDashboardMetrics();
 
-    if (portalContext) {
-      portalContext.docsPreview = Array.isArray(docs) ? docs : [];
-    }
-
-    if (!Array.isArray(docs) || !docs.length) {
-      wrap.innerHTML = `
-        <div class="documentGroup emptyStateCard">
-          <p class="itemTitle">No documents available</p>
-          <p class="itemMeta">There are currently no documents linked to your tenancy.</p>
-        </div>
-      `;
-      setStatus("Documents ready", "ok");
-      return;
-    }
-
-    const groups = {
-      Lease: [],
-      Property: [],
-      Unit: [],
-      Other: []
-    };
-
-    docs.forEach((doc) => {
-      const key = doc.sourceType || "Other";
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(doc);
-    });
-
-    const orderedGroups = [
-      { key: "Lease", title: "Lease Documents" },
-      { key: "Property", title: "Property Documents" },
-      { key: "Unit", title: "Unit Documents" },
-      { key: "Other", title: "Other Documents" }
-    ];
-
-    orderedGroups.forEach((group) => {
-      const items = groups[group.key];
-      if (!items || !items.length) return;
-
-      const section = document.createElement("section");
-      section.className = "documentGroup";
-
-      const heading = document.createElement("div");
-      heading.className = "documentGroupHeader";
-      heading.innerHTML = `
-        <p class="documentGroupTitle">${escapeHtml(group.title)}</p>
-        <p class="documentGroupMeta">${items.length} ${items.length === 1 ? "file" : "files"}</p>
-      `;
-      section.appendChild(heading);
-
-      const list = document.createElement("div");
-      list.className = "documentGroupList";
-
-      items.forEach((d) => {
-        const row = document.createElement("div");
-        row.className = "documentRow";
-
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = "btn btn-secondary documentAction";
-        button.textContent = "Download";
-        button.addEventListener("click", () => {
-          downloadDocument(d);
-        });
-
-        row.innerHTML = `
-          <div class="documentIcon" aria-hidden="true">📄</div>
-          <div class="documentInfo">
-            <p class="itemTitle">${escapeHtml(d.title || "Document")}</p>
-            <p class="itemMeta">
-              ${escapeHtml(d.fileType || "File")} • ${escapeHtml(safeDate(d.lastModified))}
-            </p>
-            ${d.sourceLabel ? `<p class="itemMeta">${escapeHtml(d.sourceLabel)}</p>` : ""}
-          </div>
-        `;
-
-        row.appendChild(button);
-        list.appendChild(row);
-      });
-
-      section.appendChild(list);
-      wrap.appendChild(section);
-    });
-
-    setStatus("Documents ready", "ok");
+    if (!skipStatusMessage) setStatus("Documents ready", "ok");
   } catch (e) {
-    console.error("Docs unavailable:", e);
-    wrap.innerHTML = `
-      <div class="documentGroup emptyStateCard">
-        <p class="itemTitle">Documents unavailable</p>
-        <p class="itemMeta">Documents aren’t available right now.</p>
-      </div>
-    `;
-    setStatus("Documents ready", "warn");
+    console.error("Documents unavailable:", e);
+    documentsCache = [];
+    renderDocuments([]);
+
+    if (!skipStatusMessage) setStatus("Documents unavailable", "warn");
   }
 }
+
+async function loadAnnouncementsAndRender(skipStatusMessage = false) {
+  if (!skipStatusMessage) setStatus("Loading announcements…", "warn");
+
+  try {
+    const items = await api("/api/announcements");
+    announcementsCache = Array.isArray(items) ? items : [];
+    renderAnnouncements(announcementsCache, "announcementsList");
+    renderAnnouncements(announcementsCache.slice(0, 3), "homeAnnouncements");
+
+    if (!skipStatusMessage) setStatus("Announcements ready", "ok");
+  } catch (e) {
+    console.error("Announcements unavailable:", e);
+    announcementsCache = [];
+    renderAnnouncements([], "announcementsList");
+    renderAnnouncements([], "homeAnnouncements");
+
+    if (!skipStatusMessage) setStatus("Announcements unavailable", "warn");
+  }
+}
+
+// -------------------------
+// Downloads
+// -------------------------
 async function downloadDocument(doc) {
   try {
     setStatus(`Downloading ${doc.title || "document"}…`, "warn");
 
+    const contentDocumentId = doc.contentDocumentId || doc.id;
+    if (!contentDocumentId) {
+      throw new Error("Document id missing.");
+    }
+
     const res = await api(
-      `/api/docs/download?contentDocumentId=${encodeURIComponent(doc.contentDocumentId)}`,
+      `/api/docs/download?contentDocumentId=${encodeURIComponent(contentDocumentId)}`,
       {
         method: "GET",
         rawResponse: true
@@ -998,8 +778,9 @@ async function downloadDocument(doc) {
     const blobUrl = window.URL.createObjectURL(blob);
 
     const ext = doc.fileExtension
-  ? `.${doc.fileExtension}`
-  : (doc.fileType ? `.${String(doc.fileType).toLowerCase()}` : "");
+      ? `.${doc.fileExtension}`
+      : (doc.fileType ? `.${String(doc.fileType).toLowerCase()}` : "");
+
     const filename = `${doc.title || "document"}${ext}`;
 
     const a = document.createElement("a");
@@ -1014,134 +795,8 @@ async function downloadDocument(doc) {
   } catch (e) {
     console.error("Download failed:", e);
     setStatus("Download failed", "bad");
-    alert("Failed to download document.");
+    showToast("Failed to download document.", "bad");
   }
-}
-
-async function loadAnnouncements() {
-  try {
-    const items = await api("/api/announcements");
-    announcementsCache = Array.isArray(items) ? items : [];
-    return announcementsCache;
-  } catch (e) {
-    console.error("Announcements unavailable:", e);
-    announcementsCache = [];
-    return [];
-  }
-}
-
-function formatDate(value) {
-  if (!value) return "—";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return "—";
-
-  return new Intl.DateTimeFormat("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric"
-  }).format(date);
-}
-
-function normaliseStatusClass(status) {
-  const value = (status || "").toLowerCase();
-  if (value === "open") return "badge badge--open";
-  if (value === "in progress") return "badge badge--in-progress";
-  if (value === "waiting for contractor") return "badge badge--waiting";
-  if (value === "completed") return "badge badge--completed";
-  return "badge badge--neutral";
-}
-
-function renderMaintenanceItems(items, targetId) {
-  const container = document.getElementById(targetId);
-  if (!container) return;
-
-  if (!items || !items.length) {
-    container.innerHTML = `
-      <div class="list-item">
-        <div class="list-item__body">No maintenance requests found.</div>
-      </div>
-    `;
-    return;
-  }
-
-  container.innerHTML = items.map(item => `
-    <article class="list-item" data-status="${(item.status || "").toLowerCase()}">
-      <div class="list-item__top">
-        <div>
-          <h3 class="list-item__title">${escapeHtml(item.subject || "Untitled request")}</h3>
-          <div class="list-item__meta">
-            Submitted ${formatDate(item.createdDate)} ${item.unitName ? `• ${escapeHtml(item.unitName)}` : ""}
-          </div>
-        </div>
-        <span class="${normaliseStatusClass(item.status)}">${escapeHtml(item.status || "Unknown")}</span>
-      </div>
-      <div class="list-item__body">
-        ${escapeHtml(item.portalUpdate || item.description || "No additional details yet.")}
-      </div>
-    </article>
-  `).join("");
-}
-
-function renderAnnouncements(items, targetId) {
-  const container = document.getElementById(targetId);
-  if (!container) return;
-
-  if (!items || !items.length) {
-    container.innerHTML = `
-      <div class="list-item">
-        <div class="list-item__body">No announcements right now.</div>
-      </div>
-    `;
-    return;
-  }
-
-  container.innerHTML = items.map(item => `
-    <article class="list-item">
-      <div class="list-item__top">
-        <div>
-          <h3 class="list-item__title">${escapeHtml(item.title || "Announcement")}</h3>
-          <div class="list-item__meta">
-            ${escapeHtml(item.category || "General")} ${item.scope ? `• ${escapeHtml(item.scope)}` : ""}
-          </div>
-        </div>
-        <span class="badge badge--neutral">${escapeHtml(item.priority || "Info")}</span>
-      </div>
-      <div class="list-item__body">
-        ${escapeHtml(item.message || "")}
-      </div>
-    </article>
-  `).join("");
-}
-
-function renderDocuments(items) {
-  const container = document.getElementById("documentsList");
-  if (!container) return;
-
-  if (!items || !items.length) {
-    container.innerHTML = `
-      <div class="list-item">
-        <div class="list-item__body">No documents available.</div>
-      </div>
-    `;
-    return;
-  }
-
-  container.innerHTML = items.map(doc => `
-    <article class="list-item">
-      <div class="list-item__top">
-        <div>
-          <h3 class="list-item__title">${escapeHtml(doc.title || doc.fileName || "Document")}</h3>
-          <div class="list-item__meta">
-            ${escapeHtml(doc.type || "File")} ${doc.lastModified ? `• ${formatDate(doc.lastModified)}` : ""}
-          </div>
-        </div>
-        <button class="panel__action" onclick="downloadDocument('${doc.id}')">Download</button>
-      </div>
-      <div class="list-item__body">
-        ${escapeHtml(doc.scopeLabel || "Available through your tenancy")}
-      </div>
-    </article>
-  `).join("");
 }
 
 // -------------------------
@@ -1149,14 +804,14 @@ function renderDocuments(items) {
 // -------------------------
 function readFileAsBase64Payload(file) {
   return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onerror = () => reject(new Error("Failed to read file"));
-    r.onload = () => resolve({
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Failed to read file"));
+    reader.onload = () => resolve({
       fileName: file.name,
       contentType: file.type || "application/octet-stream",
-      base64: r.result, // data URL
+      base64: reader.result
     });
-    r.readAsDataURL(file);
+    reader.readAsDataURL(file);
   });
 }
 
@@ -1165,52 +820,72 @@ function initMaintenanceForm() {
 
   on("maintenanceForm", "submit", async (e) => {
     e.preventDefault();
-    setText("maintenanceMsg", "Submitting…");
+    setMaintenanceMessage("Submitting your request…", "info");
     setStatus("Submitting maintenance…", "warn");
 
     try {
       const subject = ($("subject")?.value || "").trim();
       const description = ($("description")?.value || "").trim();
-
       const files = Array.from($("photos")?.files || []);
+
+      if (!subject) {
+        throw new Error("Please enter a subject.");
+      }
+
+      if (!description) {
+        throw new Error("Please enter a description.");
+      }
+
       const photos = await Promise.all(files.map(readFileAsBase64Payload));
 
       await api("/api/maintenance", {
         method: "POST",
-        body: JSON.stringify({ subject, description, photos }),
+        body: JSON.stringify({ subject, description, photos })
       });
 
-      setText("maintenanceMsg", "Submitted. Thanks — we’ll reach out if we need more info.");
-      e.target.reset();
+      setMaintenanceMessage("Submitted successfully. We’ll reach out if we need more information.", "ok");
+      $("maintenanceForm")?.reset();
 
       await loadMaintenance();
+      closeMaintenanceModal();
+      showToast("Maintenance request submitted.", "ok");
       setStatus("Submitted", "ok");
     } catch (err) {
-      setText("maintenanceMsg", err?.message || "Something went wrong");
+      console.error(err);
+      setMaintenanceMessage(err?.message || "Something went wrong.", "bad");
       setStatus("Submit failed", "bad");
     }
   });
 }
 
-function initAccountForm() {
-  if (!has("accountForm")) return;
+// -------------------------
+// Profile form
+// -------------------------
+function initProfileForm() {
+  if (!has("profileForm")) return;
 
-  on("accountForm", "submit", async (e) => {
+  on("profileForm", "submit", async (e) => {
     e.preventDefault();
 
-    const email = ($("accountEmail")?.value || "").trim();
-    const phone = ($("accountPhone")?.value || "").trim();
+    const email = ($("profileEmail")?.value || "").trim();
+    const phone = ($("profilePhone")?.value || "").trim();
 
-    setAccountBanner("", "");
+    setProfileMessage("", "info");
 
-    if (!validateAccountForm(email, phone)) {
-      setAccountBanner("Please fix the highlighted fields and try again.", "error");
-      setStatus("Account validation failed", "bad");
+    if (!validateEmail(email)) {
+      setProfileMessage("Enter a valid email address.", "bad");
+      setStatus("Profile validation failed", "bad");
       return;
     }
 
-    setAccountBanner("Saving your changes…", "success");
-    setStatus("Saving account details…", "warn");
+    if (!validatePhone(phone)) {
+      setProfileMessage("Enter a valid phone number.", "bad");
+      setStatus("Profile validation failed", "bad");
+      return;
+    }
+
+    setProfileMessage("Saving your changes…", "info");
+    setStatus("Saving profile…", "warn");
 
     try {
       const result = await api("/api/profile", {
@@ -1223,29 +898,33 @@ function initAccountForm() {
         portalContext.sf.tenant.phone = result.phone || "";
       }
 
-      renderAccount();
-      renderHome();
+      applyTenantProfileToShell({
+        name: portalContext?.sf?.tenant?.name || "Tenant",
+        email: result.email || "",
+        phone: result.phone || "",
+        propertyName: portalContext?.sf?.unit?.propertyName || "",
+        unitName: portalContext?.sf?.unit?.name || "",
+        leaseName: portalContext?.sf?.lease?.name || "",
+        tenancyStatus: portalContext?.sf?.tenancy?.status || "",
+        leaseEndDate: portalContext?.sf?.lease?.endDate || ""
+      });
 
-      setAccountBanner("Your contact details have been updated successfully.", "success");
-      setStatus("Account updated", "ok");
+      setProfileMessage("Your contact details have been updated successfully.", "ok");
+      setStatus("Profile updated", "ok");
+      showToast("Profile updated.", "ok");
     } catch (err) {
       console.error("Profile update failed:", err);
-      setAccountBanner(err?.message || "Failed to update account details.", "error");
-      setStatus("Account update failed", "bad");
+      setProfileMessage(err?.message || "Failed to update profile.", "bad");
+      setStatus("Profile update failed", "bad");
     }
-  });
-
-  on("accountResetBtn", "click", () => {
-    resetAccountFormFromContext();
-    setStatus("Account form reset", "ok");
   });
 }
 
 // -------------------------
-// Auth UI wiring
+// Auth UI
 // -------------------------
 function initAuthButtons() {
-  on("btnLogin", "click", async () => {
+  on("loginBtn", "click", async () => {
     try {
       await login();
     } catch (e) {
@@ -1254,7 +933,7 @@ function initAuthButtons() {
     }
   });
 
-  on("btnLogout", "click", async () => {
+  on("logoutBtn", "click", async () => {
     try {
       await logout();
     } catch (e) {
@@ -1262,46 +941,32 @@ function initAuthButtons() {
       setStatus("Logout error", "bad");
     }
   });
-
-  on("callApi", "click", async () => {
-    try {
-      setStatus("Calling /api/me…", "warn");
-      const me = await api("/api/me");
-      portalContext = me;
-      renderHome();
-      setText("output", JSON.stringify(me, null, 2));
-      setStatus("API ok", "ok");
-    } catch (e) {
-      console.error(e);
-      setText("output", JSON.stringify({ ok: false, error: e?.message || String(e) }, null, 2));
-      setStatus("API failed", "bad");
-    }
-  });
 }
 
 async function renderLoggedInState() {
   const authed = await isAuthenticated();
 
-  show("btnLogin", !authed);
-  show("btnLogout", authed);
-
   const app = $("app");
   const loading = $("authLoading");
+  const guest = $("guestScreen");
 
   if (!authed) {
     portalContext = null;
     if (app) app.classList.add("hidden");
-    if (loading) loading.classList.remove("hidden");
+    if (loading) loading.classList.add("hidden");
+    if (guest) guest.classList.remove("hidden");
     setStatus("Not logged in", "info");
     return;
   }
+
+  if (guest) guest.classList.add("hidden");
+  if (loading) loading.classList.remove("hidden");
 
   await loadMe();
 
   if (loading) loading.classList.add("hidden");
   if (app) app.classList.remove("hidden");
 }
-
 
 // -------------------------
 // Boot
@@ -1311,9 +976,11 @@ async function boot() {
   isBooted = true;
 
   initNavigation();
+  initMaintenanceFilters();
   initMaintenanceForm();
-  initAccountForm();
+  initProfileForm();
   initAuthButtons();
+  initModalControls();
 
   setStatus("Initialising auth…", "warn");
   await requireAuth0Client();
@@ -1324,5 +991,5 @@ async function boot() {
 boot().catch((e) => {
   console.error(e);
   setStatus("Auth init error", "bad");
-  setText("unitLine", "Auth init error. Check Auth0 URLs + settings.");
+  showToast("Authentication failed. Check Auth0 settings.", "bad");
 });
