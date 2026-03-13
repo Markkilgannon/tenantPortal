@@ -139,13 +139,44 @@ function setMaintenanceMessage(type, text) {
 }
 
 function openSidebar() {
-  $("sidebar")?.classList.add("is-open");
-  $("mobileSidebarOverlay")?.classList.add("is-visible");
+  const sidebar = document.getElementById("sidebar");
+  const overlay = document.getElementById("mobileSidebarOverlay");
+  if (sidebar) sidebar.classList.add("is-open");
+  if (overlay) overlay.classList.add("is-visible");
 }
 
 function closeSidebar() {
-  $("sidebar")?.classList.remove("is-open");
-  $("mobileSidebarOverlay")?.classList.remove("is-visible");
+  const sidebar = document.getElementById("sidebar");
+  const overlay = document.getElementById("mobileSidebarOverlay");
+  if (sidebar) sidebar.classList.remove("is-open");
+  if (overlay) overlay.classList.remove("is-visible");
+}
+
+function toggleSidebar() {
+  const sidebar = document.getElementById("sidebar");
+  if (!sidebar) return;
+  const isOpen = sidebar.classList.contains("is-open");
+  if (isOpen) {
+    closeSidebar();
+  } else {
+    openSidebar();
+  }
+}
+
+function initSidebarControls() {
+  const menuBtn = document.getElementById("sidebarToggle");
+  const closeBtn = document.getElementById("sidebarClose");
+  const overlay = document.getElementById("mobileSidebarOverlay");
+
+  if (menuBtn) menuBtn.addEventListener("click", toggleSidebar);
+  if (closeBtn) closeBtn.addEventListener("click", closeSidebar);
+  if (overlay) overlay.addEventListener("click", closeSidebar);
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      closeSidebar();
+    }
+  });
 }
 
 function closeAllModals() {
@@ -1288,6 +1319,7 @@ initMaintenanceForm();
 initProfileForm();
 initAuthButtons();
 initTenancyDetailEditButtons();
+initSidebarControls();
 
   try {
     requireAuth0Client();
