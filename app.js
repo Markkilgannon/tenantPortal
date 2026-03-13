@@ -837,13 +837,40 @@ async function loadMaintenanceDetail(id) {
     throw new Error("Maintenance ID is required.");
   }
 
-  const data = await api(`/api/maintenance-detail?id=${encodeURIComponent(id)}`);
-  console.log("maintenance detail response", data);
+  const token = await getAccessToken();
+
+  const response = await fetch(
+    `/api/maintenance-detail?id=${encodeURIComponent(id)}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    }
+  );
+
+  const rawText = await response.text();
+  console.log("maintenance detail status", response.status);
+  console.log("maintenance detail raw", rawText);
+
+  let data = null;
+  try {
+    data = rawText ? JSON.parse(rawText) : null;
+  } catch (error) {
+    throw new Error(`Maintenance detail returned non-JSON: ${rawText.slice(0, 200)}`);
+  }
+
+  console.log("maintenance detail parsed", data);
+
+  if (!response.ok) {
+    throw new Error(data?.message || `Maintenance detail request failed with status ${response.status}`);
+  }
 
   if (data?.item) return data.item;
   if (data?.id) return data;
 
-  throw new Error(data?.message || "Maintenance detail was not returned.");
+  throw new Error(
+    `Unexpected maintenance detail response: ${JSON.stringify(data).slice(0, 300)}`
+  );
 }
 
 async function openMaintenanceDetail(item) {
