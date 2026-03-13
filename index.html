@@ -109,31 +109,29 @@
 
       <main class="main-shell">
 <header class="topbar">
-  <div class="topbar__left">
+  <div class="topbar-left">
     <button
-      id="openSidebarBtn"
-      class="icon-btn topbar__menu"
+      id="sidebarToggle"
+      class="icon-btn topbar-menu-btn"
       type="button"
       aria-label="Open navigation"
     >
       ☰
     </button>
 
-    <h1 id="pageTitle" class="page-title page-title--topbar">Home</h1>
+    <h1 id="pageTitle" class="page-title">Home</h1>
   </div>
 
-  <div class="topbar__right">
-    <div class="status-pill" aria-live="polite">
-      <span id="globalStatusDot" class="status-pill__dot"></span>
-      <span id="globalStatusText">Connected</span>
+  <div class="topbar-right">
+    <div class="status-pill status-pill--connected">
+      <span class="status-dot"></span>
+      <span>Connected</span>
     </div>
 
-    <div class="tenant-chip tenant-chip--compact">
-      <div id="topbarInitials" class="avatar avatar--sm">TP</div>
-      <div class="tenant-chip__meta">
-        <p id="topbarTenantName" class="tenant-chip__title">Tenant</p>
-      </div>
-    </div>
+    <button id="topbarTenantChip" class="tenant-chip" type="button">
+      <span id="topbarInitials" class="tenant-chip__avatar">TP</span>
+      <span id="topbarTenantName" class="tenant-chip__name">Tenant</span>
+    </button>
   </div>
 </header>
 
