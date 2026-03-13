@@ -838,7 +838,12 @@ async function loadMaintenanceDetail(id) {
   }
 
   const data = await api(`/api/maintenance-detail?id=${encodeURIComponent(id)}`);
-  return data?.item || null;
+  console.log("maintenance detail response", data);
+
+  if (data?.item) return data.item;
+  if (data?.id) return data;
+
+  throw new Error(data?.message || "Maintenance detail was not returned.");
 }
 
 async function openMaintenanceDetail(item) {
@@ -872,8 +877,8 @@ async function openMaintenanceDetail(item) {
   try {
     const detail = await loadMaintenanceDetail(id);
 
-    if (!detail) {
-      throw new Error("Maintenance detail was not returned.");
+     if (!detail || !detail.id) {
+      throw new Error("Maintenance detail response was incomplete.");
     }
 
     $("maintenanceDetailTitle").textContent = safeText(
