@@ -1226,7 +1226,8 @@ button {
   }
 
   .topbar {
-    padding: 16px 18px;
+    padding: 0 18px;
+    height: 72px;
   }
 
   .content-shell {
@@ -1235,6 +1236,10 @@ button {
 
   .topbar__right .tenant-chip {
     display: none;
+  }
+
+  .page-title--topbar {
+    font-size: 24px;
   }
 }
 
