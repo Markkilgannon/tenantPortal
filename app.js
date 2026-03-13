@@ -384,15 +384,14 @@ function updateDashboardMetrics() {
   });
 
   const tenancyStatus =
-    portalContext?.tenancyStatus ||
-    portalContext?.status ||
     portalContext?.tenancy?.status ||
+    portalContext?.status ||
     "—";
 
   const leaseEnd =
+    portalContext?.lease?.endDate ||
+    portalContext?.tenancy?.endDate ||
     portalContext?.leaseEndDate ||
-    portalContext?.leaseEnd ||
-    portalContext?.tenancy?.leaseEndDate ||
     null;
 
   $("metricOpenRequests").textContent = String(openItems.length);
@@ -416,6 +415,7 @@ function updateDashboardMetrics() {
     const diffDays = Math.ceil(
       (new Date(leaseEnd).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
     );
+
     if (Number.isFinite(diffDays)) {
       if (diffDays < 0) {
         $("metricLeaseEndMeta").textContent = "Your recorded lease end date has passed";
@@ -771,14 +771,14 @@ function renderDocuments(items) {
 
 function hydrateProfileForm() {
   const email =
+    portalContext?.tenant?.email ||
     portalContext?.email ||
     portalContext?.personEmail ||
-    portalContext?.tenantEmail ||
     "";
 
   const phone =
+    portalContext?.tenant?.phone ||
     portalContext?.phone ||
-    portalContext?.mobilePhone ||
     portalContext?.personMobilePhone ||
     "";
 
@@ -1143,13 +1143,13 @@ function initProfileForm() {
       });
 
       portalContext = {
-        ...portalContext,
-        email,
-        personEmail: email,
-        phone,
-        personMobilePhone: phone
-      };
-
+  ...portalContext,
+  tenant: {
+    ...(portalContext?.tenant || {}),
+    email,
+    phone
+  }
+};
       applyTenantProfileToShell(portalContext);
 
       const savedAt = new Intl.DateTimeFormat("en-GB", {
