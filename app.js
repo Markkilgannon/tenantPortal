@@ -1190,6 +1190,26 @@ function initProfileForm() {
   });
 }
 
+function initTenancyDetailEditButtons() {
+  document.querySelectorAll("[data-edit-profile-field]").forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const field = btn.dataset.editProfileField;
+
+      await openViewAndLoad("profile");
+
+      setTimeout(() => {
+        if (field === "email") {
+          $("profileEmail")?.focus();
+          $("profileEmail")?.select?.();
+        } else if (field === "phone") {
+          $("profilePhone")?.focus();
+          $("profilePhone")?.select?.();
+        }
+      }, 150);
+    });
+  });
+}
+
 function initModalControls() {
   document.querySelectorAll("[data-close-modal]").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -1303,12 +1323,13 @@ async function boot() {
   if (isBooted) return;
   isBooted = true;
 
-  initNavigation();
-  initMaintenanceFilters();
-  initModalControls();
-  initMaintenanceForm();
-  initProfileForm();
-  initAuthButtons();
+ initNavigation();
+initMaintenanceFilters();
+initModalControls();
+initMaintenanceForm();
+initProfileForm();
+initAuthButtons();
+initTenancyDetailEditButtons();
 
   try {
     requireAuth0Client();
