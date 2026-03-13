@@ -65,7 +65,7 @@
           </div>
 
           <button
-            id="closeSidebarBtn"
+            id="sidebarClose"
             class="icon-btn sidebar__close"
             type="button"
             aria-label="Close navigation"
@@ -108,32 +108,34 @@
       </aside>
 
       <main class="main-shell">
-<header class="topbar">
-  <div class="topbar-left">
-    <button
-      id="sidebarToggle"
-      class="icon-btn topbar-menu-btn"
-      type="button"
-      aria-label="Open navigation"
-    >
-      ☰
-    </button>
+        <header class="topbar">
+          <div class="topbar__left">
+            <button
+              id="sidebarToggle"
+              class="icon-btn topbar__menu"
+              type="button"
+              aria-label="Open navigation"
+            >
+              ☰
+            </button>
 
-    <h1 id="pageTitle" class="page-title">Home</h1>
-  </div>
+            <h1 id="pageTitle" class="page-title page-title--topbar">Home</h1>
+          </div>
 
-  <div class="topbar-right">
-    <div class="status-pill status-pill--connected">
-      <span class="status-dot"></span>
-      <span>Connected</span>
-    </div>
+          <div class="topbar__right">
+            <div class="status-pill">
+              <span class="status-pill__dot"></span>
+              <span>Connected</span>
+            </div>
 
-    <button id="topbarTenantChip" class="tenant-chip" type="button">
-      <span id="topbarInitials" class="tenant-chip__avatar">TP</span>
-      <span id="topbarTenantName" class="tenant-chip__name">Tenant</span>
-    </button>
-  </div>
-</header>
+            <button id="topbarTenantChip" class="tenant-chip tenant-chip--compact" type="button">
+              <span id="topbarInitials" class="avatar avatar--sm">TP</span>
+              <span class="tenant-chip__meta">
+                <span id="topbarTenantName" class="tenant-chip__title">Tenant</span>
+              </span>
+            </button>
+          </div>
+        </header>
 
         <div class="content-shell">
           <section id="view-home" class="view is-active" aria-label="Home view">
@@ -200,7 +202,6 @@
                 <div id="homeAnnouncements" class="list-stack"></div>
               </article>
 
-        
               <article class="panel-card">
                 <div class="section-header">
                   <div>
@@ -282,102 +283,102 @@
             </article>
           </section>
 
-        <section id="view-profile" class="view" aria-label="Profile view">
-  <div class="profile-grid">
-    <article class="panel-card panel-card--narrow">
-      <div class="section-header">
-        <div>
-          <p class="eyebrow eyebrow--tight">Profile</p>
-          <h2 class="section-title">Contact details</h2>
-        </div>
-      </div>
+          <section id="view-profile" class="view" aria-label="Profile view">
+            <div class="profile-grid">
+              <article class="panel-card panel-card--narrow">
+                <div class="section-header">
+                  <div>
+                    <p class="eyebrow eyebrow--tight">Profile</p>
+                    <h2 class="section-title">Contact details</h2>
+                  </div>
+                </div>
 
-      <form id="profileForm" class="form-stack" novalidate>
-        <label class="field">
-          <span class="field__label">Email address</span>
-          <input id="profileEmail" class="input" type="email" autocomplete="email" />
-        </label>
+                <form id="profileForm" class="form-stack" novalidate>
+                  <label class="field">
+                    <span class="field__label">Email address</span>
+                    <input id="profileEmail" class="input" type="email" autocomplete="email" />
+                  </label>
 
-        <label class="field">
-          <span class="field__label">Mobile phone</span>
-          <input id="profilePhone" class="input" type="tel" autocomplete="tel" />
-        </label>
+                  <label class="field">
+                    <span class="field__label">Mobile phone</span>
+                    <input id="profilePhone" class="input" type="tel" autocomplete="tel" />
+                  </label>
 
-        <div class="form-actions">
-          <button id="profileSaveBtn" class="btn btn--primary" type="submit">
-            Save changes
-          </button>
-          <span id="profileSavedAt" class="saved-at"></span>
-        </div>
+                  <div class="form-actions">
+                    <button id="profileSaveBtn" class="btn btn--primary" type="submit">
+                      Save changes
+                    </button>
+                    <span id="profileSavedAt" class="saved-at"></span>
+                  </div>
 
-        <div id="profileMessage" class="form-message hidden" aria-live="polite"></div>
-      </form>
-    </article>
+                  <div id="profileMessage" class="form-message hidden" aria-live="polite"></div>
+                </form>
+              </article>
 
-    <article class="panel-card panel-card--narrow">
-      <div class="section-header">
-        <div>
-          <p class="eyebrow eyebrow--tight">Tenancy</p>
-          <h2 class="section-title">Details</h2>
-        </div>
-      </div>
+              <article class="panel-card panel-card--narrow">
+                <div class="section-header">
+                  <div>
+                    <p class="eyebrow eyebrow--tight">Tenancy</p>
+                    <h2 class="section-title">Details</h2>
+                  </div>
+                </div>
 
-      <dl id="tenancyDetails" class="detail-list">
-        <div class="detail-list__row">
-          <dt>Tenant</dt>
-          <dd id="detailTenantName">—</dd>
-        </div>
+                <dl id="tenancyDetails" class="detail-list">
+                  <div class="detail-list__row">
+                    <dt>Tenant</dt>
+                    <dd id="detailTenantName">—</dd>
+                  </div>
 
-        <div class="detail-list__row">
-          <dt>Email</dt>
-          <dd class="detail-list__value detail-list__value--editable">
-            <span id="detailTenantEmail">—</span>
-            <button
-              class="detail-edit-btn"
-              type="button"
-              data-edit-profile-field="email"
-              aria-label="Edit email"
-              title="Edit email"
-            >
-              ✎
-            </button>
-          </dd>
-        </div>
+                  <div class="detail-list__row">
+                    <dt>Email</dt>
+                    <dd class="detail-list__value detail-list__value--editable">
+                      <span id="detailTenantEmail">—</span>
+                      <button
+                        class="detail-edit-btn"
+                        type="button"
+                        data-edit-profile-field="email"
+                        aria-label="Edit email"
+                        title="Edit email"
+                      >
+                        ✎
+                      </button>
+                    </dd>
+                  </div>
 
-        <div class="detail-list__row">
-          <dt>Phone</dt>
-          <dd class="detail-list__value detail-list__value--editable">
-            <span id="detailTenantPhone">—</span>
-            <button
-              class="detail-edit-btn"
-              type="button"
-              data-edit-profile-field="phone"
-              aria-label="Edit phone"
-              title="Edit phone"
-            >
-              ✎
-            </button>
-          </dd>
-        </div>
+                  <div class="detail-list__row">
+                    <dt>Phone</dt>
+                    <dd class="detail-list__value detail-list__value--editable">
+                      <span id="detailTenantPhone">—</span>
+                      <button
+                        class="detail-edit-btn"
+                        type="button"
+                        data-edit-profile-field="phone"
+                        aria-label="Edit phone"
+                        title="Edit phone"
+                      >
+                        ✎
+                      </button>
+                    </dd>
+                  </div>
 
-        <div class="detail-list__row">
-          <dt>Property</dt>
-          <dd id="detailProperty">—</dd>
-        </div>
+                  <div class="detail-list__row">
+                    <dt>Property</dt>
+                    <dd id="detailProperty">—</dd>
+                  </div>
 
-        <div class="detail-list__row">
-          <dt>Unit</dt>
-          <dd id="detailUnit">—</dd>
-        </div>
+                  <div class="detail-list__row">
+                    <dt>Unit</dt>
+                    <dd id="detailUnit">—</dd>
+                  </div>
 
-        <div class="detail-list__row">
-          <dt>Lease</dt>
-          <dd id="detailLease">—</dd>
-        </div>
-      </dl>
-    </article>
-  </div>
-</section>
+                  <div class="detail-list__row">
+                    <dt>Lease</dt>
+                    <dd id="detailLease">—</dd>
+                  </div>
+                </dl>
+              </article>
+            </div>
+          </section>
         </div>
       </main>
     </div>
