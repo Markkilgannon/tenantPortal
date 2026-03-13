@@ -238,7 +238,14 @@ function renderSkeletonList(targetId, count = 3) {
     .join("");
 }
 
-function renderEmptyState({ title, text, actionText, actionType, targetId }) {
+function renderEmptyState({
+  title,
+  text,
+  actionText,
+  actionType,
+  targetId,
+  icon = ""
+}) {
   const target = $(targetId);
   if (!target) return;
 
@@ -252,8 +259,13 @@ function renderEmptyState({ title, text, actionText, actionType, targetId }) {
     `
     : "";
 
+  const iconHtml = icon
+    ? `<div class="empty-state__icon">${escapeHtml(icon)}</div>`
+    : "";
+
   target.innerHTML = `
     <div class="empty-state">
+      ${iconHtml}
       <p class="empty-state__title">${escapeHtml(title)}</p>
       <p class="empty-state__text">${escapeHtml(text)}</p>
       ${actionHtml}
@@ -317,56 +329,54 @@ async function openViewAndLoad(viewName) {
 }
 
 function applyTenantProfileToShell(data) {
-  const ctx = data?.sf || data || {};
+  const ctx = data || {};
   portalContext = ctx;
 
   const tenantName =
+    ctx?.tenant?.name ||
     ctx?.tenantName ||
     ctx?.name ||
-    ctx?.tenant?.name ||
-    ctx?.contactName ||
     "Tenant";
 
   const email =
+    ctx?.tenant?.email ||
     ctx?.email ||
     ctx?.personEmail ||
-    ctx?.tenantEmail ||
-    ctx?.tenant?.email ||
     "—";
 
   const phone =
+    ctx?.tenant?.phone ||
     ctx?.phone ||
-    ctx?.mobilePhone ||
     ctx?.personMobilePhone ||
-    ctx?.tenantPhone ||
     "—";
 
   const property =
-    ctx?.property ||
+    ctx?.unit?.propertyName ||
     ctx?.propertyName ||
-    ctx?.tenancy?.propertyName ||
+    ctx?.property ||
     "—";
 
   const unit =
-    ctx?.unit ||
+    ctx?.unit?.name ||
     ctx?.unitName ||
-    ctx?.tenancy?.unitName ||
+    ctx?.unit ||
     "—";
 
   const lease =
-    ctx?.lease ||
+    ctx?.lease?.name ||
     ctx?.leaseName ||
-    ctx?.tenancy?.leaseName ||
+    ctx?.lease ||
     "—";
 
   const initials = getInitials(tenantName);
+  const tenantSub = unit !== "—" ? unit : property !== "—" ? property : email;
 
   $("sidebarTenantName").textContent = tenantName;
-  $("sidebarTenantEmail").textContent = email;
+  $("sidebarTenantSub").textContent = tenantSub;
   $("sidebarInitials").textContent = initials;
 
   $("topbarTenantName").textContent = tenantName;
-  $("topbarTenantEmail").textContent = email;
+  $("topbarTenantSub").textContent = tenantSub;
   $("topbarInitials").textContent = initials;
 
   $("detailTenantName").textContent = tenantName;
@@ -465,18 +475,8 @@ function renderHomeCallout() {
   });
 
   const missingProfile =
-    !String(
-      portalContext?.email ||
-        portalContext?.personEmail ||
-        portalContext?.tenantEmail ||
-        ""
-    ).trim() ||
-    !String(
-      portalContext?.phone ||
-        portalContext?.mobilePhone ||
-        portalContext?.personMobilePhone ||
-        ""
-    ).trim();
+    !String(portalContext?.tenant?.email || "").trim() ||
+    !String(portalContext?.tenant?.phone || "").trim();
 
   if (urgentAnnouncement) {
     target.innerHTML = `
@@ -583,7 +583,8 @@ function renderMaintenanceItems(items, targetId, options = {}) {
       title: emptyTitle,
       text: emptyText,
       actionText: emptyActionText,
-      actionType: emptyActionType
+      actionType: emptyActionType,
+      icon: "🛠"
     });
     return;
   }
@@ -616,9 +617,6 @@ function renderMaintenanceItems(items, targetId, options = {}) {
             </div>
           </div>
           <p class="list-item__text">${escapeHtml(footerText)}</p>
-          <div class="list-item__footer">
-            <span>${escapeHtml(item.unitName || portalContext?.unitName || "")}</span>
-          </div>
         </article>
       `;
     })
@@ -647,12 +645,17 @@ function renderAnnouncements(items, targetId, options = {}) {
 
   const {
     emptyTitle = "No announcements right now",
-    emptyText = "When your property team posts updates, they will appear here.",
+    emptyText = "Property updates and notices will appear here when they are available.",
     showFullMessage = true
   } = options;
 
   if (!items || items.length === 0) {
-    renderEmptyState({ targetId, title: emptyTitle, text: emptyText });
+    renderEmptyState({
+      targetId,
+      title: emptyTitle,
+      text: emptyText,
+      icon: "📢"
+    });
     return;
   }
 
@@ -698,9 +701,17 @@ function groupDocuments(items) {
 
     if (rawCategory.includes("lease") || rawCategory.includes("inventory")) {
       groups["Lease Documents"].push(doc);
-    } else if (rawCategory.includes("safety") || rawCategory.includes("gas") || rawCategory.includes("electrical")) {
+    } else if (
+      rawCategory.includes("safety") ||
+      rawCategory.includes("gas") ||
+      rawCategory.includes("electrical")
+    ) {
       groups["Safety Certificates"].push(doc);
-    } else if (rawCategory.includes("instruction") || rawCategory.includes("guide") || rawCategory.includes("manual")) {
+    } else if (
+      rawCategory.includes("instruction") ||
+      rawCategory.includes("guide") ||
+      rawCategory.includes("manual")
+    ) {
       groups["Instructions"].push(doc);
     } else if (rawCategory.includes("property") || rawCategory.includes("unit")) {
       groups["Property Documents"].push(doc);
@@ -720,7 +731,8 @@ function renderDocuments(items) {
     renderEmptyState({
       targetId: "documentsList",
       title: "No documents available yet",
-      text: "There are no documents available for your tenancy at the moment."
+      text: "There are no documents available for your tenancy at the moment.",
+      icon: "📄"
     });
     return;
   }
@@ -945,7 +957,7 @@ async function loadMe() {
   setStatus("loading", "Loading tenancy");
 
   const data = await api("/api/me");
-  const context = data?.sf || data || {};
+  const context = data?.sf || {};
 
   applyTenantProfileToShell(context);
   hydrateProfileForm();
@@ -1143,13 +1155,14 @@ function initProfileForm() {
       });
 
       portalContext = {
-  ...portalContext,
-  tenant: {
-    ...(portalContext?.tenant || {}),
-    email,
-    phone
-  }
-};
+        ...portalContext,
+        tenant: {
+          ...(portalContext?.tenant || {}),
+          email,
+          phone
+        }
+      };
+
       applyTenantProfileToShell(portalContext);
 
       const savedAt = new Intl.DateTimeFormat("en-GB", {
@@ -1246,10 +1259,7 @@ function initAuthButtons() {
     }
 
     const maintenanceCard = event.target.closest("[data-maintenance-id]");
-    if (
-      maintenanceCard &&
-      !event.target.closest("button")
-    ) {
+    if (maintenanceCard && !event.target.closest("button")) {
       const id = maintenanceCard.dataset.maintenanceId;
       const item = maintenanceItemsCache.find((m) => {
         return String(m.id || m.maintenanceId) === String(id);
