@@ -139,24 +139,24 @@ function setMaintenanceMessage(type, text) {
 }
 
 function openSidebar() {
-  const sidebar = document.getElementById("sidebar");
-  const overlay = document.getElementById("mobileSidebarOverlay");
+  const sidebar = $("sidebar");
+  const overlay = $("mobileSidebarOverlay");
   if (sidebar) sidebar.classList.add("is-open");
   if (overlay) overlay.classList.add("is-visible");
 }
 
 function closeSidebar() {
-  const sidebar = document.getElementById("sidebar");
-  const overlay = document.getElementById("mobileSidebarOverlay");
+  const sidebar = $("sidebar");
+  const overlay = $("mobileSidebarOverlay");
   if (sidebar) sidebar.classList.remove("is-open");
   if (overlay) overlay.classList.remove("is-visible");
 }
 
 function toggleSidebar() {
-  const sidebar = document.getElementById("sidebar");
+  const sidebar = $("sidebar");
   if (!sidebar) return;
-  const isOpen = sidebar.classList.contains("is-open");
-  if (isOpen) {
+
+  if (sidebar.classList.contains("is-open")) {
     closeSidebar();
   } else {
     openSidebar();
@@ -164,9 +164,9 @@ function toggleSidebar() {
 }
 
 function initSidebarControls() {
-  const menuBtn = document.getElementById("sidebarToggle");
-  const closeBtn = document.getElementById("sidebarClose");
-  const overlay = document.getElementById("mobileSidebarOverlay");
+  const menuBtn = $("sidebarToggle");
+  const closeBtn = $("sidebarClose");
+  const overlay = $("mobileSidebarOverlay");
 
   if (menuBtn) menuBtn.addEventListener("click", toggleSidebar);
   if (closeBtn) closeBtn.addEventListener("click", closeSidebar);
@@ -281,7 +281,7 @@ function renderEmptyState({
 
 function updateTopbarMeta(viewName) {
   const meta = pageMeta[viewName] || pageMeta.home;
-  $("pageTitle").textContent = meta.title;
+  if ($("pageTitle")) $("pageTitle").textContent = meta.title;
 }
 
 function setActiveView(viewName, options = {}) {
@@ -366,19 +366,19 @@ function applyTenantProfileToShell(data) {
   const initials = getInitials(tenantName);
   const tenantSub = unit !== "—" ? unit : property !== "—" ? property : email;
 
-  $("sidebarTenantName").textContent = tenantName;
-  $("sidebarTenantSub").textContent = tenantSub;
-  $("sidebarInitials").textContent = initials;
+  if ($("sidebarTenantName")) $("sidebarTenantName").textContent = tenantName;
+  if ($("sidebarTenantSub")) $("sidebarTenantSub").textContent = tenantSub;
+  if ($("sidebarInitials")) $("sidebarInitials").textContent = initials;
 
-  $("topbarTenantName").textContent = tenantName;
-  $("topbarInitials").textContent = initials;
+  if ($("topbarTenantName")) $("topbarTenantName").textContent = tenantName;
+  if ($("topbarInitials")) $("topbarInitials").textContent = initials;
 
-  $("detailTenantName").textContent = tenantName;
-  $("detailTenantEmail").textContent = email;
-  $("detailTenantPhone").textContent = phone;
-  $("detailProperty").textContent = property;
-  $("detailUnit").textContent = unit;
-  $("detailLease").textContent = lease;
+  if ($("detailTenantName")) $("detailTenantName").textContent = tenantName;
+  if ($("detailTenantEmail")) $("detailTenantEmail").textContent = email;
+  if ($("detailTenantPhone")) $("detailTenantPhone").textContent = phone;
+  if ($("detailProperty")) $("detailProperty").textContent = property;
+  if ($("detailUnit")) $("detailUnit").textContent = unit;
+  if ($("detailLease")) $("detailLease").textContent = lease;
 }
 
 function updateDashboardMetrics() {
@@ -788,8 +788,8 @@ function hydrateProfileForm() {
     portalContext?.personMobilePhone ||
     "";
 
-  $("profileEmail").value = email;
-  $("profilePhone").value = phone;
+  if ($("profileEmail")) $("profileEmail").value = email;
+  if ($("profilePhone")) $("profilePhone").value = phone;
 }
 
 function openMaintenanceDetail(item) {
