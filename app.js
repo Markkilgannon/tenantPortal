@@ -1,40 +1,11 @@
-/**
- * Tenant Portal (Cloudflare Pages)
- * - Auth0 SPA login
- * - Calls Pages Functions (/api/*) with Bearer token
- * - Stripe-style shell with UX polish
- */
-
-// -------------------------
-// DOM helpers
-// -------------------------
-const $ = (id) => document.getElementById(id);
-const has = (id) => Boolean($(id));
-
-const setText = (id, text) => {
-  const el = $(id);
-  if (el) el.textContent = String(text ?? "");
-};
-
-const on = (id, evt, fn, opts) => {
-  const el = $(id);
-  if (!el) return false;
-  el.addEventListener(evt, fn, opts);
-  return true;
-};
-
-// -------------------------
-// Config
-// -------------------------
 const AUTH0_DOMAIN = "dev-v3g60bdgfjg7walx.us.auth0.com";
 const AUTH0_CLIENT_ID = "CXrASdTRNQKhDuJIFNvIR7wPwjAwjtCx";
 const AUTH0_AUDIENCE = "https://tenant-portal-api";
-const PORTAL_ORIGIN = window.location.origin;
-const LAST_VIEW_KEY = "tenant-portal:last-view";
 
-// -------------------------
-// State
-// -------------------------
+const LAST_VIEW_KEY = "tenant-portal:last-view";
+const MAX_FILES = 5;
+const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024;
+
 let auth0Client = null;
 let isBooted = false;
 let portalContext = null;
@@ -42,25 +13,64 @@ let maintenanceItemsCache = [];
 let documentsCache = [];
 let announcementsCache = [];
 let maintenanceFilter = "all";
+let activeModalId = null;
+let toastTimer = null;
 
-// -------------------------
-// Utilities
-// -------------------------
+const pageMeta = {
+  home: {
+    eyebrow: "Dashboard",
+    title: "Home",
+    subtitle: "Overview of your tenancy, updates, and actions.",
+    primaryAction: null
+  },
+  maintenance: {
+    eyebrow: "Maintenance",
+    title: "Maintenance",
+    subtitle: "Track requests, review updates, and report new issues.",
+    primaryAction: "New Request"
+  },
+  documents: {
+    eyebrow: "Documents",
+    title: "Documents",
+    subtitle: "Access files related to your tenancy and property.",
+    primaryAction: null
+  },
+  announcements: {
+    eyebrow: "Announcements",
+    title: "Announcements",
+    subtitle: "Stay informed about property and tenancy updates.",
+    primaryAction: null
+  },
+  profile: {
+    eyebrow: "Profile",
+    title: "Profile",
+    subtitle: "Keep your email and phone number up to date.",
+    primaryAction: null
+  }
+};
+
+function $(id) {
+  return document.getElementById(id);
+}
+
 function escapeHtml(value) {
-  return String(value ?? "").replace(/[&<>"']/g, (c) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;"
-  }[c]));
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
+function safeText(value, fallback = "—") {
+  if (value === null || value === undefined || value === "") return fallback;
+  return String(value);
 }
 
 function formatDate(value) {
   if (!value) return "—";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
-
   return new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",
     month: "short",
@@ -72,7 +82,6 @@ function safeDateTime(value) {
   if (!value) return "—";
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "—";
-
   return new Intl.DateTimeFormat("en-GB", {
     day: "2-digit",
     month: "short",
@@ -83,174 +92,208 @@ function safeDateTime(value) {
 }
 
 function getInitials(name) {
-  if (!name) return "TP";
-  return name
-    .trim()
-    .split(/\s+/)
-    .map((part) => part[0])
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
+  const raw = String(name || "").trim();
+  if (!raw) return "TP";
+  const parts = raw.split(/\s+/).slice(0, 2);
+  return parts.map((p) => p[0]?.toUpperCase() || "").join("") || "TP";
 }
 
-function setStatus(message, kind = "info") {
-  const label = $("globalStatusText");
-  if (label) label.textContent = String(message || "");
+function getSavedView() {
+  return localStorage.getItem(LAST_VIEW_KEY) || "home";
+}
 
+function saveView(viewName) {
+  localStorage.setItem(LAST_VIEW_KEY, viewName);
+}
+
+function setStatus(state, text) {
   const dot = $("globalStatusDot");
-  if (!dot) return;
+  const label = $("globalStatusText");
+  if (!dot || !label) return;
 
-  const color =
-    kind === "ok" ? "#0f9f6e" :
-    kind === "warn" ? "#b7791f" :
-    kind === "bad" ? "#d14343" :
-    "#94a3b8";
+  label.textContent = text || "Connected";
 
-  dot.style.background = color;
+  const colorMap = {
+    ok: "var(--success)",
+    loading: "var(--warning)",
+    error: "var(--danger)"
+  };
+  dot.style.background = colorMap[state] || "var(--success)";
+  dot.style.boxShadow =
+    state === "error"
+      ? "0 0 0 6px rgba(209, 67, 67, 0.08)"
+      : state === "loading"
+      ? "0 0 0 6px rgba(183, 121, 31, 0.08)"
+      : "0 0 0 6px rgba(15, 159, 110, 0.08)";
 }
 
-function showToast(message, kind = "info") {
+function showToast(text) {
   const toast = $("toast");
   const toastText = $("toastText");
   if (!toast || !toastText) return;
 
-  toastText.textContent = String(message || "");
-  toast.classList.remove("toast--info", "toast--success", "toast--error");
+  toastText.textContent = text;
+  toast.classList.remove("hidden");
 
-  if (kind === "ok") {
-    toast.classList.add("toast--success");
-  } else if (kind === "bad") {
-    toast.classList.add("toast--error");
-  } else {
-    toast.classList.add("toast--info");
-  }
-
-  toast.classList.add("is-visible");
-
-  window.clearTimeout(showToast._timer);
-  showToast._timer = window.setTimeout(() => {
-    toast.classList.remove("is-visible");
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    toast.classList.add("hidden");
   }, 3200);
 }
 
-function setProfileMessage(message = "", kind = "info") {
-  const el = $("profileMessage");
+function setFormMessage(elementId, type, text) {
+  const el = $(elementId);
   if (!el) return;
 
-  el.textContent = message;
-  el.classList.remove("form-message--info", "form-message--success", "form-message--error");
-
-  if (!message) {
-    el.style.display = "none";
+  if (!text) {
+    el.className = "form-message hidden";
+    el.textContent = "";
     return;
   }
 
-  el.style.display = "block";
-  if (kind === "ok") el.classList.add("form-message--success");
-  else if (kind === "bad") el.classList.add("form-message--error");
-  else el.classList.add("form-message--info");
+  el.className = `form-message form-message--${type}`;
+  el.textContent = text;
 }
 
-function setMaintenanceMessage(message = "", kind = "info") {
-  const el = $("maintenanceMsg");
-  if (!el) return;
-
-  el.textContent = message;
-  el.classList.remove("form-message--info", "form-message--success", "form-message--error");
-
-  if (!message) {
-    el.style.display = "none";
-    return;
-  }
-
-  el.style.display = "block";
-  if (kind === "ok") el.classList.add("form-message--success");
-  else if (kind === "bad") el.classList.add("form-message--error");
-  else el.classList.add("form-message--info");
+function setProfileMessage(type, text) {
+  setFormMessage("profileMessage", type, text);
 }
 
-function validateEmail(email) {
-  if (!email) return true;
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+function setMaintenanceMessage(type, text) {
+  setFormMessage("maintenanceMsg", type, text);
 }
 
-function validatePhone(phone) {
-  if (!phone) return true;
-  return /^[0-9+()\-\s]{7,20}$/.test(phone);
-}
-
-function saveLastView(viewName) {
-  try {
-    localStorage.setItem(LAST_VIEW_KEY, viewName);
-  } catch {}
-}
-
-function getLastView() {
-  try {
-    return localStorage.getItem(LAST_VIEW_KEY) || "home";
-  } catch {
-    return "home";
-  }
-}
-
-function scrollToTopSmooth() {
-  window.scrollTo({ top: 0, behavior: "smooth" });
-}
-
-function closeMobileSidebar() {
-  document.querySelector(".sidebar")?.classList.remove("is-open");
-  $("mobileSidebarOverlay")?.classList.remove("is-visible");
-}
-
-function openMobileSidebar() {
-  document.querySelector(".sidebar")?.classList.add("is-open");
+function openSidebar() {
+  $("sidebar")?.classList.add("is-open");
   $("mobileSidebarOverlay")?.classList.add("is-visible");
 }
 
-// -------------------------
-// Page metadata / navigation
-// -------------------------
-const pageMeta = {
-  home: {
-    title: "Dashboard",
-    subtitle: "Overview of your tenancy and latest activity"
-  },
-  maintenance: {
-    title: "Maintenance",
-    subtitle: "Track issues, updates, and request history"
-  },
-  documents: {
-    title: "Documents",
-    subtitle: "Download files available through your tenancy"
-  },
-  announcements: {
-    title: "Announcements",
-    subtitle: "Important notices and property updates"
-  },
-  profile: {
-    title: "Profile",
-    subtitle: "Manage your contact details"
+function closeSidebar() {
+  $("sidebar")?.classList.remove("is-open");
+  $("mobileSidebarOverlay")?.classList.remove("is-visible");
+}
+
+function closeAllModals() {
+  document.querySelectorAll(".modal").forEach((modal) => {
+    modal.classList.add("hidden");
+    modal.setAttribute("aria-hidden", "true");
+  });
+  activeModalId = null;
+}
+
+function closeModalById(id) {
+  const modal = $(id);
+  if (!modal) return;
+  modal.classList.add("hidden");
+  modal.setAttribute("aria-hidden", "true");
+  if (activeModalId === id) activeModalId = null;
+}
+
+function openModal(id) {
+  const modal = $(id);
+  if (!modal) return;
+  closeAllModals();
+  modal.classList.remove("hidden");
+  modal.setAttribute("aria-hidden", "false");
+  activeModalId = id;
+}
+
+function normaliseStatusClass(status) {
+  const key = String(status || "").trim().toLowerCase();
+  if (key === "open") return "badge--open";
+  if (key === "in progress") return "badge--in-progress";
+  if (key === "waiting for contractor") return "badge--waiting-for-contractor";
+  if (key === "completed") return "badge--completed";
+  return "badge--default";
+}
+
+function announcementItemClass(priority) {
+  const value = String(priority || "").trim().toLowerCase();
+  if (value === "urgent") return "list-item--announcement-urgent";
+  if (value === "high") return "list-item--announcement-high";
+  return "";
+}
+
+function announcementBadgeClass(priority) {
+  const value = String(priority || "").trim().toLowerCase();
+  if (value === "urgent") return "badge badge--urgent";
+  if (value === "high") return "badge badge--high";
+  return "badge badge--default";
+}
+
+function renderSkeletonList(targetId, count = 3) {
+  const target = $(targetId);
+  if (!target) return;
+
+  target.innerHTML = Array.from({ length: count })
+    .map(
+      () => `
+        <div class="skeleton-card">
+          <div class="skeleton-line skeleton-line--lg"></div>
+          <div class="skeleton-line skeleton-line--md"></div>
+          <div class="skeleton-line skeleton-line--sm"></div>
+        </div>
+      `
+    )
+    .join("");
+}
+
+function renderEmptyState({ title, text, actionText, actionType, targetId }) {
+  const target = $(targetId);
+  if (!target) return;
+
+  const actionHtml = actionText
+    ? `
+      <div class="empty-state__actions">
+        <button class="btn btn--primary" data-empty-action="${escapeHtml(actionType || "")}" type="button">
+          ${escapeHtml(actionText)}
+        </button>
+      </div>
+    `
+    : "";
+
+  target.innerHTML = `
+    <div class="empty-state">
+      <p class="empty-state__title">${escapeHtml(title)}</p>
+      <p class="empty-state__text">${escapeHtml(text)}</p>
+      ${actionHtml}
+    </div>
+  `;
+}
+
+function updateTopbarMeta(viewName) {
+  const meta = pageMeta[viewName] || pageMeta.home;
+  $("pageEyebrow").textContent = meta.eyebrow;
+  $("pageTitle").textContent = meta.title;
+  $("pageSubtitle").textContent = meta.subtitle;
+
+  const actionBtn = $("topbarPrimaryAction");
+  if (!meta.primaryAction) {
+    actionBtn.classList.add("hidden");
+    actionBtn.textContent = "";
+  } else {
+    actionBtn.classList.remove("hidden");
+    actionBtn.textContent = meta.primaryAction;
   }
-};
+}
 
 function setActiveView(viewName, options = {}) {
+  const resolvedView = pageMeta[viewName] ? viewName : "home";
+
   document.querySelectorAll(".view").forEach((view) => {
-    view.classList.toggle("active", view.id === `view-${viewName}`);
+    view.classList.toggle("is-active", view.id === `view-${resolvedView}`);
   });
 
-  document.querySelectorAll(".nav-item").forEach((item) => {
-    item.classList.toggle("active", item.dataset.view === viewName);
+  document.querySelectorAll(".nav__item").forEach((btn) => {
+    btn.classList.toggle("is-active", btn.dataset.view === resolvedView);
   });
 
-  const meta = pageMeta[viewName] || pageMeta.home;
-  setText("pageTitle", meta.title);
-  setText("pageSubtitle", meta.subtitle);
-
-  closeMobileSidebar();
-  saveLastView(viewName);
+  updateTopbarMeta(resolvedView);
+  saveView(resolvedView);
+  closeSidebar();
 
   if (!options.skipScroll) {
-    scrollToTopSmooth();
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 }
 
@@ -258,72 +301,545 @@ async function openViewAndLoad(viewName) {
   setActiveView(viewName);
 
   if (viewName === "maintenance") {
-    await loadMaintenance();
+    renderSkeletonList("maintenanceList", 4);
+    await loadMaintenance(true);
   } else if (viewName === "documents") {
-    await loadDocuments();
+    renderSkeletonList("documentsList", 4);
+    await loadDocuments(true);
   } else if (viewName === "announcements") {
-    await loadAnnouncementsAndRender();
+    renderSkeletonList("announcementsList", 3);
+    await loadAnnouncementsAndRender(true);
+  } else if (viewName === "profile") {
+    hydrateProfileForm();
+  } else if (viewName === "home") {
+    updateDashboardMetrics();
   }
 }
 
-function initNavigation() {
-  document.querySelectorAll(".nav-item").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      await openViewAndLoad(btn.dataset.view);
-    });
+function applyTenantProfileToShell(data) {
+  portalContext = data || {};
+
+  const tenantName =
+    data?.tenantName ||
+    data?.name ||
+    data?.tenant?.name ||
+    data?.contactName ||
+    "Tenant";
+
+  const email =
+    data?.email ||
+    data?.personEmail ||
+    data?.tenantEmail ||
+    data?.tenant?.email ||
+    "—";
+
+  const phone =
+    data?.phone ||
+    data?.mobilePhone ||
+    data?.personMobilePhone ||
+    data?.tenantPhone ||
+    "—";
+
+  const property =
+    data?.property ||
+    data?.propertyName ||
+    data?.tenancy?.propertyName ||
+    "—";
+
+  const unit =
+    data?.unit ||
+    data?.unitName ||
+    data?.tenancy?.unitName ||
+    "—";
+
+  const lease =
+    data?.lease ||
+    data?.leaseName ||
+    data?.tenancy?.leaseName ||
+    "—";
+
+  const initials = getInitials(tenantName);
+
+  $("sidebarTenantName").textContent = tenantName;
+  $("sidebarTenantEmail").textContent = email;
+  $("sidebarInitials").textContent = initials;
+
+  $("topbarTenantName").textContent = tenantName;
+  $("topbarTenantEmail").textContent = email;
+  $("topbarInitials").textContent = initials;
+
+  $("detailTenantName").textContent = tenantName;
+  $("detailTenantEmail").textContent = email;
+  $("detailTenantPhone").textContent = phone;
+  $("detailProperty").textContent = property;
+  $("detailUnit").textContent = unit;
+  $("detailLease").textContent = lease;
+}
+
+function updateDashboardMetrics() {
+  const openItems = maintenanceItemsCache.filter((item) => {
+    const status = String(item.status || "").toLowerCase();
+    return status !== "completed";
   });
 
-  document.querySelectorAll("[data-view-link]").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      await openViewAndLoad(btn.dataset.viewLink);
-    });
-  });
+  const tenancyStatus =
+    portalContext?.tenancyStatus ||
+    portalContext?.status ||
+    portalContext?.tenancy?.status ||
+    "—";
 
-  on("mobileNavToggle", "click", () => {
-    const sidebar = document.querySelector(".sidebar");
-    if (sidebar?.classList.contains("is-open")) {
-      closeMobileSidebar();
+  const leaseEnd =
+    portalContext?.leaseEndDate ||
+    portalContext?.leaseEnd ||
+    portalContext?.tenancy?.leaseEndDate ||
+    null;
+
+  $("metricOpenRequests").textContent = String(openItems.length);
+  $("metricOpenRequestsMeta").textContent =
+    openItems.length === 0
+      ? "No open maintenance requests at the moment"
+      : openItems.length === 1
+      ? "1 request currently needs attention"
+      : `${openItems.length} requests currently need attention`;
+
+  $("metricDocuments").textContent = String(documentsCache.length);
+  $("metricTenancyStatus").textContent = safeText(tenancyStatus);
+  $("metricTenancyStatusMeta").textContent =
+    tenancyStatus && tenancyStatus !== "—"
+      ? "Status taken from your tenancy record"
+      : "No tenancy status was provided";
+
+  $("metricLeaseEnd").textContent = leaseEnd ? formatDate(leaseEnd) : "—";
+
+  if (leaseEnd) {
+    const diffDays = Math.ceil(
+      (new Date(leaseEnd).getTime() - Date.now()) / (1000 * 60 * 60 * 24)
+    );
+    if (Number.isFinite(diffDays)) {
+      if (diffDays < 0) {
+        $("metricLeaseEndMeta").textContent = "Your recorded lease end date has passed";
+      } else if (diffDays === 0) {
+        $("metricLeaseEndMeta").textContent = "Lease ends today";
+      } else if (diffDays === 1) {
+        $("metricLeaseEndMeta").textContent = "1 day remaining on the current lease";
+      } else {
+        $("metricLeaseEndMeta").textContent = `${diffDays} days remaining on the current lease`;
+      }
     } else {
-      openMobileSidebar();
+      $("metricLeaseEndMeta").textContent = "Remaining time unavailable";
+    }
+  } else {
+    $("metricLeaseEndMeta").textContent = "No lease end date is currently available";
+  }
+
+  renderHomeCallout();
+  renderMaintenanceItems(maintenanceItemsCache.slice(0, 3), "recentMaintenanceList", {
+    emptyTitle: "No maintenance requests yet",
+    emptyText:
+      "If something in your home needs attention, create a request and we will help you from there.",
+    emptyActionText: "Create request",
+    emptyActionType: "new-maintenance",
+    showViewButton: false
+  });
+
+  renderAnnouncements(announcementsCache.slice(0, 3), "homeAnnouncements", {
+    emptyTitle: "No announcements right now",
+    emptyText:
+      "Property updates and notices will appear here when they are available.",
+    showFullMessage: false
+  });
+}
+
+function renderHomeCallout() {
+  const target = $("homeCallout");
+  if (!target) return;
+
+  const urgentAnnouncement = announcementsCache.find((item) => {
+    const priority = String(item.priority || "").toLowerCase();
+    return priority === "urgent" || priority === "high";
+  });
+
+  const openMaintenance = maintenanceItemsCache.filter((item) => {
+    return String(item.status || "").toLowerCase() !== "completed";
+  });
+
+  const missingProfile =
+    !String(
+      portalContext?.email ||
+        portalContext?.personEmail ||
+        portalContext?.tenantEmail ||
+        ""
+    ).trim() ||
+    !String(
+      portalContext?.phone ||
+        portalContext?.mobilePhone ||
+        portalContext?.personMobilePhone ||
+        ""
+    ).trim();
+
+  if (urgentAnnouncement) {
+    target.innerHTML = `
+      <div class="callout-card callout-card--priority">
+        <div>
+          <p class="eyebrow eyebrow--tight">Priority update</p>
+          <h2 class="callout-card__title">${escapeHtml(
+            urgentAnnouncement.title || "Important announcement"
+          )}</h2>
+          <p class="callout-card__text">${escapeHtml(
+            urgentAnnouncement.message || "A new announcement needs your attention."
+          )}</p>
+        </div>
+        <div class="callout-card__actions">
+          <button class="btn btn--primary" data-open-view="announcements" type="button">
+            Review announcements
+          </button>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  if (openMaintenance.length > 0) {
+    target.innerHTML = `
+      <div class="callout-card">
+        <div>
+          <p class="eyebrow eyebrow--tight">Open maintenance</p>
+          <h2 class="callout-card__title">
+            ${openMaintenance.length} ${
+      openMaintenance.length === 1 ? "request requires" : "requests require"
+    } attention
+          </h2>
+          <p class="callout-card__text">
+            Review your current maintenance items or submit another request if a new issue has come up.
+          </p>
+        </div>
+        <div class="callout-card__actions">
+          <button class="btn btn--ghost" data-open-view="maintenance" type="button">
+            View requests
+          </button>
+          <button class="btn btn--primary" data-action="new-maintenance" type="button">
+            New request
+          </button>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  if (missingProfile) {
+    target.innerHTML = `
+      <div class="callout-card">
+        <div>
+          <p class="eyebrow eyebrow--tight">Profile update</p>
+          <h2 class="callout-card__title">Complete your contact details</h2>
+          <p class="callout-card__text">
+            Add your current email and phone number so property updates can reach you more easily.
+          </p>
+        </div>
+        <div class="callout-card__actions">
+          <button class="btn btn--primary" data-open-view="profile" type="button">
+            Update profile
+          </button>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  target.innerHTML = `
+    <div class="callout-card">
+      <div>
+        <p class="eyebrow eyebrow--tight">Welcome</p>
+        <h2 class="callout-card__title">Everything for your tenancy is now in one place</h2>
+        <p class="callout-card__text">
+          Use the portal to submit maintenance requests, review documents, and stay up to date with property announcements.
+        </p>
+      </div>
+      <div class="callout-card__actions">
+        <button class="btn btn--primary" data-action="new-maintenance" type="button">
+          Create request
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function renderMaintenanceItems(items, targetId, options = {}) {
+  const target = $(targetId);
+  if (!target) return;
+
+  const {
+    emptyTitle = "No maintenance requests yet",
+    emptyText = "Create a request whenever something in your property needs attention.",
+    emptyActionText = "Create request",
+    emptyActionType = "new-maintenance",
+    showViewButton = true
+  } = options;
+
+  if (!items || items.length === 0) {
+    renderEmptyState({
+      targetId,
+      title: emptyTitle,
+      text: emptyText,
+      actionText: emptyActionText,
+      actionType: emptyActionType
+    });
+    return;
+  }
+
+  target.innerHTML = items
+    .map((item, index) => {
+      const statusClass = normaliseStatusClass(item.status);
+      const footerText =
+        item.portalUpdate ||
+        item.description ||
+        "No additional update has been posted yet.";
+      const uniqueId = escapeHtml(item.id || item.maintenanceId || `maintenance-${index}`);
+
+      return `
+        <article class="list-item list-item--clickable" tabindex="0" data-maintenance-id="${uniqueId}">
+          <div class="list-item__top">
+            <div>
+              <h3 class="list-item__title">${escapeHtml(item.subject || "Maintenance request")}</h3>
+              <p class="list-item__meta">Submitted ${escapeHtml(
+                safeDateTime(item.createdDate)
+              )}</p>
+            </div>
+            <div class="list-item__actions">
+              <span class="badge ${statusClass}">${escapeHtml(item.status || "Unknown")}</span>
+              ${
+                showViewButton
+                  ? `<button class="btn btn--ghost btn--sm" type="button" data-maintenance-open="${uniqueId}">View details</button>`
+                  : ""
+              }
+            </div>
+          </div>
+          <p class="list-item__text">${escapeHtml(footerText)}</p>
+          <div class="list-item__footer">
+            <span>${escapeHtml(item.unitName || portalContext?.unitName || "")}</span>
+          </div>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function renderFilteredMaintenance() {
+  const filtered =
+    maintenanceFilter === "all"
+      ? maintenanceItemsCache
+      : maintenanceItemsCache.filter((item) => {
+          return String(item.status || "").trim().toLowerCase() === maintenanceFilter;
+        });
+
+  renderMaintenanceItems(filtered, "maintenanceList", {
+    emptyTitle: "No requests in this filter",
+    emptyText: "There are no maintenance items matching the selected status.",
+    emptyActionText: "Create request",
+    emptyActionType: "new-maintenance"
+  });
+}
+
+function renderAnnouncements(items, targetId, options = {}) {
+  const target = $(targetId);
+  if (!target) return;
+
+  const {
+    emptyTitle = "No announcements right now",
+    emptyText = "When your property team posts updates, they will appear here.",
+    showFullMessage = true
+  } = options;
+
+  if (!items || items.length === 0) {
+    renderEmptyState({ targetId, title: emptyTitle, text: emptyText });
+    return;
+  }
+
+  target.innerHTML = items
+    .map((item) => {
+      const itemClass = announcementItemClass(item.priority);
+      const badgeClass = announcementBadgeClass(item.priority);
+      const body = item.message || "No announcement message was provided.";
+      const clipped =
+        showFullMessage || body.length <= 180 ? body : `${body.slice(0, 177)}...`;
+
+      return `
+        <article class="list-item ${itemClass}">
+          <div class="list-item__top">
+            <div>
+              <h3 class="list-item__title">${escapeHtml(item.title || "Announcement")}</h3>
+              <p class="list-item__meta">${escapeHtml(
+                item.category || item.scope || "Property update"
+              )} • ${escapeHtml(safeDateTime(item.startDateTime || item.createdDate))}</p>
+            </div>
+            <div class="list-item__actions">
+              <span class="${badgeClass}">${escapeHtml(item.priority || "Standard")}</span>
+            </div>
+          </div>
+          <p class="list-item__text">${escapeHtml(clipped)}</p>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function groupDocuments(items) {
+  const groups = {
+    "Lease Documents": [],
+    "Property Documents": [],
+    "Safety Certificates": [],
+    "Instructions": [],
+    Other: []
+  };
+
+  items.forEach((doc) => {
+    const rawCategory = String(doc.category || doc.type || "").toLowerCase();
+
+    if (rawCategory.includes("lease") || rawCategory.includes("inventory")) {
+      groups["Lease Documents"].push(doc);
+    } else if (rawCategory.includes("safety") || rawCategory.includes("gas") || rawCategory.includes("electrical")) {
+      groups["Safety Certificates"].push(doc);
+    } else if (rawCategory.includes("instruction") || rawCategory.includes("guide") || rawCategory.includes("manual")) {
+      groups["Instructions"].push(doc);
+    } else if (rawCategory.includes("property") || rawCategory.includes("unit")) {
+      groups["Property Documents"].push(doc);
+    } else {
+      groups.Other.push(doc);
     }
   });
 
-  on("mobileSidebarOverlay", "click", () => {
-    closeMobileSidebar();
+  return groups;
+}
+
+function renderDocuments(items) {
+  const target = $("documentsList");
+  if (!target) return;
+
+  if (!items || items.length === 0) {
+    renderEmptyState({
+      targetId: "documentsList",
+      title: "No documents available yet",
+      text: "There are no documents available for your tenancy at the moment."
+    });
+    return;
+  }
+
+  const grouped = groupDocuments(items);
+  const sections = Object.entries(grouped)
+    .filter(([, docs]) => docs.length > 0)
+    .map(([groupName, docs]) => {
+      const docsHtml = docs
+        .map((doc) => {
+          const id = escapeHtml(doc.contentDocumentId || doc.id || "");
+          return `
+            <article class="list-item">
+              <div class="list-item__top">
+                <div>
+                  <h3 class="list-item__title">${escapeHtml(doc.title || doc.name || "Document")}</h3>
+                  <p class="list-item__meta">${escapeHtml(
+                    safeText(doc.fileType || doc.type || "File")
+                  )} • ${escapeHtml(formatDate(doc.createdDate || doc.lastModifiedDate))}</p>
+                </div>
+                <div class="list-item__actions">
+                  <button class="btn btn--ghost btn--sm" data-doc-download="${id}" type="button">
+                    Download
+                  </button>
+                </div>
+              </div>
+            </article>
+          `;
+        })
+        .join("");
+
+      return `
+        <section class="document-group">
+          <div class="section-header">
+            <div>
+              <p class="eyebrow eyebrow--tight">Category</p>
+              <h3 class="section-title">${escapeHtml(groupName)}</h3>
+            </div>
+          </div>
+          <div class="list-stack">${docsHtml}</div>
+        </section>
+      `;
+    })
+    .join("");
+
+  target.innerHTML = sections;
+}
+
+function hydrateProfileForm() {
+  const email =
+    portalContext?.email ||
+    portalContext?.personEmail ||
+    portalContext?.tenantEmail ||
+    "";
+
+  const phone =
+    portalContext?.phone ||
+    portalContext?.mobilePhone ||
+    portalContext?.personMobilePhone ||
+    "";
+
+  $("profileEmail").value = email;
+  $("profilePhone").value = phone;
+}
+
+function openMaintenanceDetail(item) {
+  $("maintenanceDetailTitle").textContent = safeText(item.subject, "Request details");
+  $("maintenanceDetailStatus").innerHTML = `
+    <span class="badge ${normaliseStatusClass(item.status)}">${escapeHtml(
+      safeText(item.status, "Unknown")
+    )}</span>
+  `;
+  $("maintenanceDetailSubmitted").textContent = safeDateTime(item.createdDate);
+  $("maintenanceDetailDescription").textContent = safeText(
+    item.description,
+    "No description was provided."
+  );
+  $("maintenanceDetailUpdate").textContent = safeText(
+    item.portalUpdate,
+    "No update available."
+  );
+
+  openModal("maintenanceDetailModal");
+}
+
+function openMaintenanceModal() {
+  $("maintenanceForm").reset();
+  $("photoSelectionList").innerHTML = "";
+  $("photoSelectionMeta").textContent =
+    "You can upload up to 5 images, maximum 2MB each.";
+  setMaintenanceMessage("", "");
+  openModal("maintenanceModal");
+  setTimeout(() => $("subject")?.focus(), 50);
+}
+
+function openLogoutModal() {
+  openModal("logoutModal");
+}
+
+function initNavigation() {
+  document.querySelectorAll(".nav__item").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      openViewAndLoad(btn.dataset.view);
+    });
   });
 
-  on("qaMaintenance", "click", async () => {
-    await openViewAndLoad("maintenance");
-  });
-
-  on("qaDocuments", "click", async () => {
-    await openViewAndLoad("documents");
-  });
-
-  on("qaAnnouncements", "click", async () => {
-    await openViewAndLoad("announcements");
-  });
-
-  on("qaProfile", "click", () => {
-    setActiveView("profile");
-  });
-
-  on("quickMaintenanceBtn", "click", () => {
-    openMaintenanceModal();
-  });
-
-  on("maintenanceCreateBtn", "click", () => {
-    openMaintenanceModal();
+  document.querySelectorAll("[data-open-view]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      openViewAndLoad(btn.dataset.openView);
+    });
   });
 }
 
 function initMaintenanceFilters() {
-  document.querySelectorAll("[data-maintenance-filter]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      maintenanceFilter = btn.dataset.maintenanceFilter || "all";
+  document.querySelectorAll("[data-maintenance-filter]").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      maintenanceFilter = chip.dataset.maintenanceFilter || "all";
 
-      document.querySelectorAll("[data-maintenance-filter]").forEach((other) => {
-        other.classList.toggle("active", other === btn);
+      document.querySelectorAll("[data-maintenance-filter]").forEach((c) => {
+        c.classList.toggle("is-active", c === chip);
       });
 
       renderFilteredMaintenance();
@@ -331,731 +847,249 @@ function initMaintenanceFilters() {
   });
 }
 
-// -------------------------
-// Auth helpers
-// -------------------------
-async function requireAuth0Client() {
-  const factory =
-    window.auth0 && typeof window.auth0.createAuth0Client === "function"
-      ? window.auth0.createAuth0Client
-      : null;
-
-  if (!factory) {
-    throw new Error("Auth0 SPA SDK not loaded.");
+function requireAuth0Client() {
+  if (!window.auth0) {
+    throw new Error("Auth0 library is not available.");
   }
-
   if (!auth0Client) {
-    auth0Client = await factory({
+    auth0Client = new window.auth0.Auth0Client({
       domain: AUTH0_DOMAIN,
       clientId: AUTH0_CLIENT_ID,
       authorizationParams: {
         audience: AUTH0_AUDIENCE,
-        redirect_uri: PORTAL_ORIGIN,
-        scope: "openid profile email"
+        redirect_uri: window.location.origin
       },
       cacheLocation: "memory",
       useRefreshTokens: false
     });
   }
-
   return auth0Client;
 }
 
 async function handleAuthRedirectIfPresent() {
+  const client = requireAuth0Client();
   const query = window.location.search;
   if (query.includes("code=") && query.includes("state=")) {
-    setStatus("Completing login…", "warn");
-    await auth0Client.handleRedirectCallback();
-    window.history.replaceState({}, document.title, PORTAL_ORIGIN + window.location.pathname);
+    await client.handleRedirectCallback();
+    window.history.replaceState({}, document.title, window.location.pathname);
   }
 }
 
 async function login() {
-  await requireAuth0Client();
-  setStatus("Redirecting to login…", "warn");
-  await auth0Client.loginWithRedirect({
+  const client = requireAuth0Client();
+  await client.loginWithRedirect({
     authorizationParams: {
-      redirect_uri: PORTAL_ORIGIN,
       audience: AUTH0_AUDIENCE,
-      scope: "openid profile email"
+      redirect_uri: window.location.origin
     }
   });
 }
 
 async function logout() {
-  await requireAuth0Client();
-  setStatus("Logging out…", "warn");
-  await auth0Client.logout({
-    logoutParams: { returnTo: PORTAL_ORIGIN }
+  const client = requireAuth0Client();
+  closeAllModals();
+  await client.logout({
+    logoutParams: {
+      returnTo: window.location.origin
+    }
   });
 }
 
 async function isAuthenticated() {
-  await requireAuth0Client();
-  return auth0Client.isAuthenticated();
+  const client = requireAuth0Client();
+  return client.isAuthenticated();
 }
 
 async function getAccessToken() {
-  await requireAuth0Client();
-  return auth0Client.getTokenSilently({
-    authorizationParams: {
-      audience: AUTH0_AUDIENCE,
-      scope: "openid profile email"
-    }
+  const client = requireAuth0Client();
+  return client.getTokenSilently({
+    authorizationParams: { audience: AUTH0_AUDIENCE }
   });
 }
 
-// -------------------------
-// API wrapper
-// -------------------------
 async function api(path, opts = {}) {
   const token = await getAccessToken();
-  const headers = { ...(opts.headers || {}) };
+  const headers = new Headers(opts.headers || {});
+  headers.set("Authorization", `Bearer ${token}`);
 
-  if (opts.body && !headers["Content-Type"]) {
-    headers["Content-Type"] = "application/json";
+  if (!(opts.body instanceof FormData) && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
   }
 
-  headers.Authorization = `Bearer ${token}`;
-
-  const res = await fetch(path, {
+  const response = await fetch(path, {
     ...opts,
     headers
   });
 
-  if (opts.rawResponse) {
-    if (!res.ok) {
-      const text = await res.text().catch(() => "");
-      throw new Error(text || `HTTP ${res.status}`);
+  if (!response.ok) {
+    let message = `Request failed with status ${response.status}`;
+    try {
+      const payload = await response.json();
+      message = payload?.message || payload?.error || message;
+    } catch {
+      const text = await response.text();
+      if (text) message = text;
     }
-    return res;
+    throw new Error(message);
   }
 
-  const ct = res.headers.get("Content-Type") || "";
-  const data = ct.includes("application/json")
-    ? await res.json().catch(() => ({}))
-    : await res.text();
-
-  if (!res.ok) {
-    const msg =
-      (data && data.details) ? data.details :
-      (data && data.message) ? data.message :
-      (data && data.error) ? data.error :
-      (typeof data === "string" ? data : `HTTP ${res.status}`);
-    throw new Error(msg);
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    return response.json();
   }
-
-  return data;
+  return response.blob();
 }
 
-// -------------------------
-// Shell population
-// -------------------------
-function applyTenantProfileToShell(data) {
-  const fullName = data?.name || "Tenant";
-  const email = data?.email || "—";
-  const phone = data?.phone || "—";
-  const property = data?.propertyName || "—";
-  const unit = data?.unitName || "—";
-  const lease = data?.leaseName || "—";
-  const tenancyStatus = data?.tenancyStatus || "—";
-  const leaseEnd = data?.leaseEndDate || "—";
-
-  setText("profileNameTop", fullName);
-  setText("profileEmailTop", email);
-  setText("profileInitials", getInitials(fullName));
-
-  setText("tenantName", fullName);
-  setText("tenantEmail", email);
-  setText("tenantPhone", phone);
-  setText("tenantProperty", property);
-  setText("tenantUnit", unit);
-  setText("tenantLease", lease);
-
-  setText("metricTenancyStatus", tenancyStatus);
-  setText("metricLeaseEnd", leaseEnd);
-  setText("sidebarTenancyStatus", tenancyStatus);
-  setText("sidebarUnitName", unit !== "—" ? unit : "Unit —");
-
-  const profileEmailField = $("profileEmail");
-  const profilePhoneField = $("profilePhone");
-
-  if (profileEmailField) profileEmailField.value = email === "—" ? "" : email;
-  if (profilePhoneField) profilePhoneField.value = phone === "—" ? "" : phone;
-}
-
-function updateDashboardMetrics() {
-  const openCount = maintenanceItemsCache.filter(
-    (item) => (item.status || "").toLowerCase() !== "completed"
-  ).length;
-
-  setText("metricOpenRequests", openCount);
-  setText("metricDocuments", documentsCache.length);
-}
-
-function renderHomeCallout() {
-  const container = $("homeCallout");
-  if (!container) return;
-
-  const urgentAnnouncement = announcementsCache.find((item) => {
-    const p = String(item.priority || "").toLowerCase();
-    return p === "urgent" || p === "high";
-  });
-
-  const openCount = maintenanceItemsCache.filter(
-    (item) => (item.status || "").toLowerCase() !== "completed"
-  ).length;
-
-  if (urgentAnnouncement) {
-    container.innerHTML = `
-      <div class="callout-card callout-card--priority">
-        <div class="callout-card__label">Priority announcement</div>
-        <h3 class="callout-card__title">${escapeHtml(urgentAnnouncement.title || "Important notice")}</h3>
-        <p class="callout-card__text">${escapeHtml(urgentAnnouncement.message || "")}</p>
-        <div class="callout-card__actions">
-          <button class="topbar-action" type="button" id="calloutViewAnnouncements">View announcements</button>
-        </div>
-      </div>
-    `;
-
-    on("calloutViewAnnouncements", "click", async () => {
-      await openViewAndLoad("announcements");
-    });
-    return;
-  }
-
-  if (openCount > 0) {
-    container.innerHTML = `
-      <div class="callout-card">
-        <div class="callout-card__label">Active maintenance</div>
-        <h3 class="callout-card__title">You have ${openCount} open request${openCount === 1 ? "" : "s"}</h3>
-        <p class="callout-card__text">Review the latest status updates and track what is still in progress.</p>
-        <div class="callout-card__actions">
-          <button class="topbar-action" type="button" id="calloutViewMaintenance">View active requests</button>
-        </div>
-      </div>
-    `;
-
-    on("calloutViewMaintenance", "click", async () => {
-      await openViewAndLoad("maintenance");
-    });
-    return;
-  }
-
-  container.innerHTML = `
-    <div class="callout-card">
-      <div class="callout-card__label">Get started</div>
-      <h3 class="callout-card__title">Need help in your property?</h3>
-      <p class="callout-card__text">Submit a maintenance request and your property team can review it quickly.</p>
-      <div class="callout-card__actions">
-        <button class="topbar-action" type="button" id="calloutNewMaintenance">Submit maintenance request</button>
-      </div>
-    </div>
-  `;
-
-  on("calloutNewMaintenance", "click", () => {
-    openMaintenanceModal();
-  });
-}
-
-// -------------------------
-// Rendering
-// -------------------------
-function normaliseStatusClass(status) {
-  const value = String(status || "").toLowerCase();
-  if (value === "open") return "badge badge--open";
-  if (value === "in progress") return "badge badge--in-progress";
-  if (value === "waiting for contractor") return "badge badge--waiting";
-  if (value === "completed") return "badge badge--completed";
-  return "badge badge--neutral";
-}
-
-function announcementItemClass(priority) {
-  const value = String(priority || "").toLowerCase();
-  if (value === "urgent") return "list-item list-item--announcement-urgent";
-  if (value === "high") return "list-item list-item--announcement-high";
-  return "list-item";
-}
-
-function announcementBadgeClass(priority) {
-  const value = String(priority || "").toLowerCase();
-  if (value === "urgent") return "badge badge--urgent";
-  if (value === "high") return "badge badge--high";
-  return "badge badge--neutral";
-}
-
-function renderSkeletonList(targetId, count = 3) {
-  const container = $(targetId);
-  if (!container) return;
-
-  container.innerHTML = Array.from({ length: count }).map(() => `
-    <div class="skeleton-card">
-      <div class="skeleton-line skeleton-line--lg"></div>
-      <div class="skeleton-line skeleton-line--sm"></div>
-      <div class="skeleton-line skeleton-line--md"></div>
-    </div>
-  `).join("");
-}
-
-function renderEmptyState(targetId, title, text, actionText = "", actionId = "") {
-  const container = $(targetId);
-  if (!container) return;
-
-  container.innerHTML = `
-    <div class="empty-state">
-      <h3 class="empty-state__title">${escapeHtml(title)}</h3>
-      <p class="empty-state__text">${escapeHtml(text)}</p>
-      ${actionText && actionId ? `
-        <div class="empty-state__actions">
-          <button class="panel__action" type="button" id="${escapeHtml(actionId)}">${escapeHtml(actionText)}</button>
-        </div>
-      ` : ""}
-    </div>
-  `;
-}
-
-function renderMaintenanceItems(items, targetId) {
-  const container = $(targetId);
-  if (!container) return;
-
-  if (!items || !items.length) {
-    const isHome = targetId === "recentMaintenanceList";
-    renderEmptyState(
-      targetId,
-      isHome ? "No maintenance requests yet" : "No maintenance requests found",
-      isHome
-        ? "Your latest requests and updates will appear here."
-        : "There are no maintenance requests for the selected filter.",
-      "Submit request",
-      `${targetId}-empty-action`
-    );
-
-    on(`${targetId}-empty-action`, "click", () => {
-      openMaintenanceModal();
-    });
-    return;
-  }
-
-  container.innerHTML = items.map((item, index) => {
-    const latestText = item.portalUpdate || item.description || "No additional details yet.";
-    const status = item.status || "Unknown";
-    const submitted = formatDate(item.createdDate);
-
-    return `
-      <article class="list-item" data-status="${escapeHtml(String(status).toLowerCase())}">
-        <div class="list-item__top">
-          <div>
-            <h3 class="list-item__title">${escapeHtml(item.subject || "Untitled request")}</h3>
-            <div class="list-item__meta">
-              Submitted ${submitted}
-            </div>
-          </div>
-          <span class="${normaliseStatusClass(status)}">${escapeHtml(status)}</span>
-        </div>
-        <div class="list-item__body">
-          ${escapeHtml(latestText)}
-        </div>
-        <div class="list-item__footer">
-          <div class="list-item__footer-meta">
-            ${item.portalUpdate ? "Latest portal update available" : "No new portal update yet"}
-          </div>
-          <button class="panel__action" type="button" data-maintenance-index="${index}" data-maintenance-target="${targetId}">
-            View details
-          </button>
-        </div>
-      </article>
-    `;
-  }).join("");
-
-  container.querySelectorAll("[data-maintenance-index]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const idx = Number(btn.dataset.maintenanceIndex);
-      const sourceTarget = btn.dataset.maintenanceTarget;
-      const sourceItems = sourceTarget === "recentMaintenanceList"
-        ? maintenanceItemsCache.slice(0, 3)
-        : (maintenanceFilter === "all"
-            ? maintenanceItemsCache
-            : maintenanceItemsCache.filter(
-                (item) => String(item.status || "").toLowerCase() === maintenanceFilter.toLowerCase()
-              ));
-
-      const item = sourceItems[idx];
-      if (item) openMaintenanceDetail(item);
-    });
-  });
-}
-
-function renderFilteredMaintenance() {
-  const value = maintenanceFilter.toLowerCase();
-  const filtered = value === "all"
-    ? maintenanceItemsCache
-    : maintenanceItemsCache.filter(
-        (item) => String(item.status || "").toLowerCase() === value
-      );
-
-  renderMaintenanceItems(filtered, "maintenanceList");
-}
-
-function renderAnnouncements(items, targetId) {
-  const container = $(targetId);
-  if (!container) return;
-
-  if (!items || !items.length) {
-    renderEmptyState(
-      targetId,
-      "No announcements right now",
-      "Important property notices will appear here."
-    );
-    return;
-  }
-
-  container.innerHTML = items.map((item) => `
-    <article class="${announcementItemClass(item.priority)}">
-      <div class="list-item__top">
-        <div>
-          <h3 class="list-item__title">${escapeHtml(item.title || "Announcement")}</h3>
-          <div class="list-item__meta">
-            ${escapeHtml(item.category || "General")}${item.scope ? ` • ${escapeHtml(item.scope)}` : ""}
-          </div>
-        </div>
-        <span class="${announcementBadgeClass(item.priority)}">${escapeHtml(item.priority || "Info")}</span>
-      </div>
-      <div class="list-item__body">
-        ${escapeHtml(item.message || "")}
-      </div>
-      ${(item.startDateTime || item.endDateTime) ? `
-        <div class="list-item__meta" style="margin-top:10px;">
-          Active ${escapeHtml(safeDateTime(item.startDateTime))}${item.endDateTime ? ` to ${escapeHtml(safeDateTime(item.endDateTime))}` : ""}
-        </div>
-      ` : ""}
-    </article>
-  `).join("");
-}
-
-function renderDocuments(items) {
-  const container = $("documentsList");
-  if (!container) return;
-
-  if (!items || !items.length) {
-    renderEmptyState(
-      "documentsList",
-      "No documents available",
-      "Documents linked to your tenancy will appear here."
-    );
-    return;
-  }
-
-  container.innerHTML = items.map((doc, index) => `
-    <article class="list-item">
-      <div class="list-item__top">
-        <div>
-          <h3 class="list-item__title">${escapeHtml(doc.title || doc.fileName || "Document")}</h3>
-          <div class="list-item__meta">
-            ${escapeHtml(doc.fileType || doc.type || "File")}
-            ${doc.lastModified ? ` • ${formatDate(doc.lastModified)}` : ""}
-          </div>
-        </div>
-        <button class="panel__action" type="button" data-document-index="${index}">
-          Download
-        </button>
-      </div>
-      <div class="list-item__body">
-        ${escapeHtml(doc.sourceLabel || doc.scopeLabel || "Available through your tenancy")}
-      </div>
-    </article>
-  `).join("");
-
-  container.querySelectorAll("[data-document-index]").forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      const idx = Number(btn.dataset.documentIndex);
-      const doc = items[idx];
-      if (doc) await downloadDocument(doc);
-    });
-  });
-}
-
-// -------------------------
-// Detail / modal handling
-// -------------------------
-function openMaintenanceDetail(item) {
-  setText("maintenanceDetailTitle", item.subject || "Maintenance request");
-  setText("maintenanceDetailStatus", item.status || "Unknown");
-  setText("maintenanceDetailSubmitted", safeDateTime(item.createdDate));
-  setText("maintenanceDetailDescription", item.description || "No description provided.");
-  setText("maintenanceDetailUpdate", item.portalUpdate || "No update has been added yet.");
-
-  $("maintenanceDetailModal")?.classList.add("is-open");
-}
-
-function openMaintenanceModal() {
-  $("maintenanceModal")?.classList.add("is-open");
-  setMaintenanceMessage("", "info");
-  $("subject")?.focus();
-}
-
-function openLogoutModal() {
-  $("logoutModal")?.classList.add("is-open");
-}
-
-function closeModalById(id) {
-  $(id)?.classList.remove("is-open");
-}
-
-function closeAllModals() {
-  document.querySelectorAll(".modal.is-open").forEach((modal) => {
-    modal.classList.remove("is-open");
-  });
-}
-
-function initModalControls() {
-  document.querySelectorAll("[data-close-modal]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const target = btn.dataset.closeModal;
-      closeModalById(target);
-    });
-  });
-
-  document.querySelectorAll(".modal").forEach((modal) => {
-    modal.addEventListener("click", (e) => {
-      if (e.target === modal) {
-        modal.classList.remove("is-open");
-      }
-    });
-  });
-
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") {
-      closeAllModals();
-      closeMobileSidebar();
-    }
-  });
-}
-
-// -------------------------
-// Loaders
-// -------------------------
 async function loadMe() {
-  setStatus("Loading dashboard…", "warn");
-
-  const me = await api("/api/me");
-  portalContext = me;
-
-  const ctx = me?.sf?.ok !== false ? me.sf : null;
-
-  const shellProfile = {
-    name: ctx?.tenant?.name || "Tenant",
-    email: ctx?.tenant?.email || "",
-    phone: ctx?.tenant?.phone || "",
-    propertyName: ctx?.unit?.propertyName || "",
-    unitName: ctx?.unit?.name || "",
-    leaseName: ctx?.lease?.name || "",
-    tenancyStatus: ctx?.tenancy?.status || "",
-    leaseEndDate: ctx?.lease?.endDate || ""
-  };
-
-  applyTenantProfileToShell(shellProfile);
-
-  renderSkeletonList("maintenanceList", 3);
-  renderSkeletonList("recentMaintenanceList", 3);
-  renderSkeletonList("documentsList", 3);
-  renderSkeletonList("announcementsList", 3);
-  renderSkeletonList("homeAnnouncements", 2);
-
-  await Promise.all([
-    loadMaintenance(true),
-    loadDocuments(true),
-    loadAnnouncementsAndRender(true)
-  ]);
-
-  updateDashboardMetrics();
-  renderHomeCallout();
-  setStatus("Ready", "ok");
+  setStatus("loading", "Loading tenancy");
+  const data = await api("/api/me");
+  applyTenantProfileToShell(data);
+  hydrateProfileForm();
+  setStatus("ok", "Connected");
 }
 
 async function loadMaintenance(skipStatusMessage = false) {
-  if (!skipStatusMessage) {
-    setStatus("Loading maintenance…", "warn");
-    renderSkeletonList("maintenanceList", 3);
-  }
-
-  try {
-    const items = await api("/api/maintenance");
-    maintenanceItemsCache = Array.isArray(items) ? items : [];
-
-    renderFilteredMaintenance();
-    renderMaintenanceItems(maintenanceItemsCache.slice(0, 3), "recentMaintenanceList");
-    updateDashboardMetrics();
-    renderHomeCallout();
-
-    if (!skipStatusMessage) setStatus("Maintenance ready", "ok");
-  } catch (e) {
-    console.error("Maintenance unavailable:", e);
-    maintenanceItemsCache = [];
-    renderFilteredMaintenance();
-    renderMaintenanceItems([], "recentMaintenanceList");
-    renderHomeCallout();
-
-    if (!skipStatusMessage) setStatus("Maintenance unavailable", "warn");
-  }
+  if (!skipStatusMessage) setStatus("loading", "Loading maintenance");
+  const data = await api("/api/maintenance");
+  maintenanceItemsCache = Array.isArray(data) ? data : data?.items || [];
+  renderFilteredMaintenance();
+  if (!skipStatusMessage) setStatus("ok", "Connected");
+  updateDashboardMetrics();
 }
 
 async function loadDocuments(skipStatusMessage = false) {
-  if (!skipStatusMessage) {
-    setStatus("Loading documents…", "warn");
-    renderSkeletonList("documentsList", 3);
-  }
-
-  try {
-    const items = await api("/api/docs");
-    documentsCache = Array.isArray(items) ? items : [];
-    renderDocuments(documentsCache);
-    updateDashboardMetrics();
-
-    if (!skipStatusMessage) setStatus("Documents ready", "ok");
-  } catch (e) {
-    console.error("Documents unavailable:", e);
-    documentsCache = [];
-    renderDocuments([]);
-
-    if (!skipStatusMessage) setStatus("Documents unavailable", "warn");
-  }
+  if (!skipStatusMessage) setStatus("loading", "Loading documents");
+  const data = await api("/api/docs");
+  documentsCache = Array.isArray(data) ? data : data?.items || [];
+  renderDocuments(documentsCache);
+  if (!skipStatusMessage) setStatus("ok", "Connected");
+  updateDashboardMetrics();
 }
 
 async function loadAnnouncementsAndRender(skipStatusMessage = false) {
-  if (!skipStatusMessage) {
-    setStatus("Loading announcements…", "warn");
-    renderSkeletonList("announcementsList", 3);
-  }
-
-  try {
-    const items = await api("/api/announcements");
-    announcementsCache = Array.isArray(items) ? items : [];
-    renderAnnouncements(announcementsCache, "announcementsList");
-    renderAnnouncements(announcementsCache.slice(0, 3), "homeAnnouncements");
-    renderHomeCallout();
-
-    if (!skipStatusMessage) setStatus("Announcements ready", "ok");
-  } catch (e) {
-    console.error("Announcements unavailable:", e);
-    announcementsCache = [];
-    renderAnnouncements([], "announcementsList");
-    renderAnnouncements([], "homeAnnouncements");
-    renderHomeCallout();
-
-    if (!skipStatusMessage) setStatus("Announcements unavailable", "warn");
-  }
+  if (!skipStatusMessage) setStatus("loading", "Loading announcements");
+  const data = await api("/api/announcements");
+  announcementsCache = Array.isArray(data) ? data : data?.items || [];
+  renderAnnouncements(announcementsCache, "announcementsList");
+  if (!skipStatusMessage) setStatus("ok", "Connected");
+  updateDashboardMetrics();
 }
 
-// -------------------------
-// Downloads
-// -------------------------
 async function downloadDocument(doc) {
-  try {
-    setStatus(`Downloading ${doc.title || "document"}…`, "warn");
-
-    const contentDocumentId = doc.contentDocumentId || doc.id;
-    if (!contentDocumentId) {
-      throw new Error("Document id missing.");
-    }
-
-    const res = await api(
-      `/api/docs/download?contentDocumentId=${encodeURIComponent(contentDocumentId)}`,
-      {
-        method: "GET",
-        rawResponse: true
-      }
-    );
-
-    const blob = await res.blob();
-    const blobUrl = window.URL.createObjectURL(blob);
-
-    const ext = doc.fileExtension
-      ? `.${doc.fileExtension}`
-      : (doc.fileType ? `.${String(doc.fileType).toLowerCase()}` : "");
-
-    const filename = `${doc.title || "document"}${ext}`;
-
-    const a = document.createElement("a");
-    a.href = blobUrl;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-
-    window.URL.revokeObjectURL(blobUrl);
-    setStatus("Documents ready", "ok");
-  } catch (e) {
-    console.error("Download failed:", e);
-    setStatus("Download failed", "bad");
-    showToast("Failed to download document.", "bad");
+  const contentDocumentId = doc.contentDocumentId || doc.id;
+  if (!contentDocumentId) {
+    throw new Error("Document ID was not available for download.");
   }
+
+  setStatus("loading", "Preparing download");
+  const url = `/api/docs/download?id=${encodeURIComponent(contentDocumentId)}`;
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${await getAccessToken()}`
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error(`Download failed with status ${response.status}`);
+  }
+
+  const blob = await response.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = objectUrl;
+  a.download = doc.title || doc.name || "document";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(objectUrl);
+  setStatus("ok", "Connected");
+  showToast("Document download started.");
 }
 
-// -------------------------
-// Maintenance submit
-// -------------------------
 function readFileAsBase64Payload(file) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onerror = () => reject(new Error("Failed to read file"));
-    reader.onload = () => resolve({
-      fileName: file.name,
-      contentType: file.type || "application/octet-stream",
-      base64: reader.result
-    });
+    reader.onload = () => {
+      const result = String(reader.result || "");
+      const base64 = result.includes(",") ? result.split(",")[1] : result;
+      resolve({
+        fileName: file.name,
+        contentType: file.type,
+        base64
+      });
+    };
+    reader.onerror = () => reject(new Error(`Failed to read ${file.name}`));
     reader.readAsDataURL(file);
   });
 }
 
 function updateSelectedFilesUI() {
-  const files = Array.from($("photos")?.files || []);
-  const meta = $("photoSelectionMeta");
+  const input = $("photos");
   const list = $("photoSelectionList");
+  const meta = $("photoSelectionMeta");
+  if (!input || !list || !meta) return;
 
-  if (!meta || !list) return;
-
-  if (!files.length) {
-    meta.textContent = "No files selected";
+  const files = Array.from(input.files || []);
+  if (files.length === 0) {
     list.innerHTML = "";
+    meta.textContent = "You can upload up to 5 images, maximum 2MB each.";
     return;
   }
 
-  meta.textContent = `${files.length} file${files.length === 1 ? "" : "s"} selected`;
+  list.innerHTML = files
+    .map((file) => {
+      const sizeKb = Math.round(file.size / 1024);
+      return `<span class="file-chip">${escapeHtml(file.name)} • ${sizeKb}KB</span>`;
+    })
+    .join("");
 
-  list.innerHTML = files.map((file) => `
-    <span class="file-chip">${escapeHtml(file.name)}</span>
-  `).join("");
+  meta.textContent = `${files.length} ${files.length === 1 ? "file selected" : "files selected"}`;
 }
 
 function initMaintenanceForm() {
-  if (!has("maintenanceForm")) return;
+  $("photos")?.addEventListener("change", () => {
+    setMaintenanceMessage("", "");
+    updateSelectedFilesUI();
+  });
 
-  on("photos", "change", updateSelectedFilesUI);
-  on("subject", "input", () => setMaintenanceMessage("", "info"));
-  on("description", "input", () => setMaintenanceMessage("", "info"));
+  $("subject")?.addEventListener("input", () => setMaintenanceMessage("", ""));
+  $("description")?.addEventListener("input", () => setMaintenanceMessage("", ""));
 
-  on("maintenanceForm", "submit", async (e) => {
-    e.preventDefault();
+  $("maintenanceForm")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    setMaintenanceMessage("", "");
+
+    const subject = $("subject").value.trim();
+    const description = $("description").value.trim();
+    const files = Array.from($("photos").files || []);
+
+    if (!subject) {
+      setMaintenanceMessage("error", "Please enter a subject for your maintenance request.");
+      return;
+    }
+
+    if (!description) {
+      setMaintenanceMessage("error", "Please provide a short description of the issue.");
+      return;
+    }
+
+    if (files.length > MAX_FILES) {
+      setMaintenanceMessage("error", `You can upload up to ${MAX_FILES} photos.`);
+      return;
+    }
+
+    const oversized = files.find((file) => file.size > MAX_FILE_SIZE_BYTES);
+    if (oversized) {
+      setMaintenanceMessage("error", `${oversized.name} is larger than 2MB.`);
+      return;
+    }
 
     const submitBtn = $("maintenanceSubmitBtn");
-    if (submitBtn) submitBtn.disabled = true;
-
-    setMaintenanceMessage("Submitting your request…", "info");
-    setStatus("Submitting maintenance…", "warn");
+    submitBtn.disabled = true;
+    submitBtn.textContent = "Submitting...";
+    setStatus("loading", "Submitting request");
 
     try {
-      const subject = ($("subject")?.value || "").trim();
-      const description = ($("description")?.value || "").trim();
-      const files = Array.from($("photos")?.files || []);
-
-      if (!subject) {
-        throw new Error("Please enter a subject.");
-      }
-
-      if (!description) {
-        throw new Error("Please enter a description.");
-      }
-
       const photos = await Promise.all(files.map(readFileAsBase64Payload));
 
       await api("/api/maintenance", {
@@ -1063,182 +1097,251 @@ function initMaintenanceForm() {
         body: JSON.stringify({ subject, description, photos })
       });
 
-      $("maintenanceForm")?.reset();
-      updateSelectedFilesUI();
-
-      await loadMaintenance();
       closeModalById("maintenanceModal");
-      showToast("Maintenance request submitted.", "ok");
-      setStatus("Submitted", "ok");
-    } catch (err) {
-      console.error(err);
-      setMaintenanceMessage(err?.message || "Something went wrong.", "bad");
-      setStatus("Submit failed", "bad");
+      showToast("Maintenance request submitted successfully.");
+      await loadMaintenance(true);
+      setActiveView("maintenance");
+      setStatus("ok", "Connected");
+    } catch (error) {
+      setStatus("error", "Service unavailable");
+      setMaintenanceMessage(
+        "error",
+        error.message || "We could not submit your request right now. Please try again."
+      );
     } finally {
-      if (submitBtn) submitBtn.disabled = false;
+      submitBtn.disabled = false;
+      submitBtn.textContent = "Submit request";
     }
   });
 }
 
-// -------------------------
-// Profile form
-// -------------------------
 function initProfileForm() {
-  if (!has("profileForm")) return;
+  $("profileEmail")?.addEventListener("input", () => setProfileMessage("", ""));
+  $("profilePhone")?.addEventListener("input", () => setProfileMessage("", ""));
 
-  on("profileEmail", "input", () => setProfileMessage("", "info"));
-  on("profilePhone", "input", () => setProfileMessage("", "info"));
+  $("profileForm")?.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    setProfileMessage("", "");
 
-  on("profileForm", "submit", async (e) => {
-    e.preventDefault();
+    const email = $("profileEmail").value.trim();
+    const phone = $("profilePhone").value.trim();
 
     const saveBtn = $("profileSaveBtn");
-    if (saveBtn) saveBtn.disabled = true;
-
-    const email = ($("profileEmail")?.value || "").trim();
-    const phone = ($("profilePhone")?.value || "").trim();
-
-    setProfileMessage("", "info");
-
-    if (!validateEmail(email)) {
-      setProfileMessage("Enter a valid email address.", "bad");
-      setStatus("Profile validation failed", "bad");
-      if (saveBtn) saveBtn.disabled = false;
-      return;
-    }
-
-    if (!validatePhone(phone)) {
-      setProfileMessage("Enter a valid phone number.", "bad");
-      setStatus("Profile validation failed", "bad");
-      if (saveBtn) saveBtn.disabled = false;
-      return;
-    }
-
-    setProfileMessage("Saving your changes…", "info");
-    setStatus("Saving profile…", "warn");
+    saveBtn.disabled = true;
+    saveBtn.textContent = "Saving...";
+    setStatus("loading", "Saving profile");
 
     try {
-      const result = await api("/api/profile", {
+      await api("/api/profile", {
         method: "POST",
         body: JSON.stringify({ email, phone })
       });
 
-      if (portalContext?.sf?.tenant) {
-        portalContext.sf.tenant.email = result.email || "";
-        portalContext.sf.tenant.phone = result.phone || "";
-      }
+      portalContext = {
+        ...portalContext,
+        email,
+        personEmail: email,
+        phone,
+        personMobilePhone: phone
+      };
 
-      applyTenantProfileToShell({
-        name: portalContext?.sf?.tenant?.name || "Tenant",
-        email: result.email || "",
-        phone: result.phone || "",
-        propertyName: portalContext?.sf?.unit?.propertyName || "",
-        unitName: portalContext?.sf?.unit?.name || "",
-        leaseName: portalContext?.sf?.lease?.name || "",
-        tenancyStatus: portalContext?.sf?.tenancy?.status || "",
-        leaseEndDate: portalContext?.sf?.lease?.endDate || ""
+      applyTenantProfileToShell(portalContext);
+
+      const savedAt = new Intl.DateTimeFormat("en-GB", {
+        day: "2-digit",
+        month: "short",
+        hour: "2-digit",
+        minute: "2-digit"
+      }).format(new Date());
+
+      $("profileSavedAt").textContent = `Saved ${savedAt}`;
+      setProfileMessage("success", "Your contact details were updated successfully.");
+      showToast("Profile updated successfully.");
+      setStatus("ok", "Connected");
+      updateDashboardMetrics();
+    } catch (error) {
+      setStatus("error", "Service unavailable");
+      setProfileMessage(
+        "error",
+        error.message || "We could not save your changes right now. Please try again."
+      );
+    } finally {
+      saveBtn.disabled = false;
+      saveBtn.textContent = "Save changes";
+    }
+  });
+}
+
+function initModalControls() {
+  document.querySelectorAll("[data-close-modal]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      closeModalById(btn.dataset.closeModal);
+    });
+  });
+}
+
+function initAuthButtons() {
+  $("loginBtn")?.addEventListener("click", login);
+  $("logoutBtn")?.addEventListener("click", openLogoutModal);
+  $("confirmLogoutBtn")?.addEventListener("click", logout);
+
+  $("maintenanceCreateBtn")?.addEventListener("click", openMaintenanceModal);
+  $("topbarPrimaryAction")?.addEventListener("click", () => {
+    if (!$("topbarPrimaryAction").classList.contains("hidden")) {
+      openMaintenanceModal();
+    }
+  });
+
+  $("openSidebarBtn")?.addEventListener("click", openSidebar);
+  $("closeSidebarBtn")?.addEventListener("click", closeSidebar);
+  $("mobileSidebarOverlay")?.addEventListener("click", closeSidebar);
+
+  document.addEventListener("click", async (event) => {
+    const openViewBtn = event.target.closest("[data-open-view]");
+    if (openViewBtn) {
+      await openViewAndLoad(openViewBtn.dataset.openView);
+      return;
+    }
+
+    const actionBtn = event.target.closest("[data-action], [data-empty-action]");
+    const actionType =
+      actionBtn?.dataset.action || actionBtn?.dataset.emptyAction || "";
+
+    if (actionType === "new-maintenance") {
+      openMaintenanceModal();
+      return;
+    }
+
+    const docBtn = event.target.closest("[data-doc-download]");
+    if (docBtn) {
+      const id = docBtn.dataset.docDownload;
+      const doc = documentsCache.find((item) => {
+        return String(item.contentDocumentId || item.id) === String(id);
       });
 
-      setText("profileSavedAt", `Saved ${safeDateTime(new Date().toISOString())}`);
-      setProfileMessage("Your contact details have been updated successfully.", "ok");
-      setStatus("Profile updated", "ok");
-      showToast("Profile updated.", "ok");
-    } catch (err) {
-      console.error("Profile update failed:", err);
-      setProfileMessage(err?.message || "Failed to update profile.", "bad");
-      setStatus("Profile update failed", "bad");
-    } finally {
-      if (saveBtn) saveBtn.disabled = false;
+      if (doc) {
+        try {
+          await downloadDocument(doc);
+        } catch (error) {
+          setStatus("error", "Service unavailable");
+          showToast(error.message || "Unable to download document.");
+        }
+      }
+      return;
+    }
+
+    const maintenanceOpenBtn = event.target.closest("[data-maintenance-open]");
+    if (maintenanceOpenBtn) {
+      const id = maintenanceOpenBtn.dataset.maintenanceOpen;
+      const item = maintenanceItemsCache.find((m) => {
+        return String(m.id || m.maintenanceId) === String(id);
+      });
+      if (item) openMaintenanceDetail(item);
+      return;
+    }
+
+    const maintenanceCard = event.target.closest("[data-maintenance-id]");
+    if (
+      maintenanceCard &&
+      !event.target.closest("button")
+    ) {
+      const id = maintenanceCard.dataset.maintenanceId;
+      const item = maintenanceItemsCache.find((m) => {
+        return String(m.id || m.maintenanceId) === String(id);
+      });
+      if (item) openMaintenanceDetail(item);
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") {
+      if (activeModalId) {
+        closeAllModals();
+        return;
+      }
+      closeSidebar();
+    }
+
+    if (
+      event.key.toLowerCase() === "n" &&
+      !$("app").classList.contains("hidden") &&
+      !["INPUT", "TEXTAREA"].includes(document.activeElement?.tagName)
+    ) {
+      openMaintenanceModal();
     }
   });
 }
 
-// -------------------------
-// Auth UI
-// -------------------------
-function initAuthButtons() {
-  on("loginBtn", "click", async () => {
-    try {
-      await login();
-    } catch (e) {
-      console.error(e);
-      setStatus("Login error", "bad");
-    }
-  });
-
-  on("logoutBtn", "click", () => {
-    openLogoutModal();
-  });
-
-  on("confirmLogoutBtn", "click", async () => {
-    try {
-      await logout();
-    } catch (e) {
-      console.error(e);
-      setStatus("Logout error", "bad");
-    }
-  });
+function renderLoggedInState() {
+  $("authLoading").classList.add("hidden");
+  $("guestScreen").classList.add("hidden");
+  $("app").classList.remove("hidden");
 }
 
-async function renderLoggedInState() {
-  const authed = await isAuthenticated();
-
-  const app = $("app");
-  const loading = $("authLoading");
-  const guest = $("guestScreen");
-
-  if (!authed) {
-    portalContext = null;
-    if (app) app.classList.add("hidden");
-    if (loading) loading.classList.add("hidden");
-    if (guest) guest.classList.remove("hidden");
-    setStatus("Not logged in", "info");
-    return;
-  }
-
-  if (guest) guest.classList.add("hidden");
-  if (loading) loading.classList.remove("hidden");
-
-  await loadMe();
-
-  const lastView = getLastView();
-  setActiveView(lastView, { skipScroll: true });
-
-  if (lastView === "maintenance") {
-    renderFilteredMaintenance();
-  } else if (lastView === "documents") {
-    renderDocuments(documentsCache);
-  } else if (lastView === "announcements") {
-    renderAnnouncements(announcementsCache, "announcementsList");
-  }
-
-  if (loading) loading.classList.add("hidden");
-  if (app) app.classList.remove("hidden");
+function renderLoggedOutState() {
+  $("authLoading").classList.add("hidden");
+  $("guestScreen").classList.remove("hidden");
+  $("app").classList.add("hidden");
 }
 
-// -------------------------
-// Boot
-// -------------------------
 async function boot() {
   if (isBooted) return;
   isBooted = true;
 
   initNavigation();
   initMaintenanceFilters();
+  initModalControls();
   initMaintenanceForm();
   initProfileForm();
   initAuthButtons();
-  initModalControls();
-  updateSelectedFilesUI();
 
-  setStatus("Initialising auth…", "warn");
-  await requireAuth0Client();
-  await handleAuthRedirectIfPresent();
-  await renderLoggedInState();
+  try {
+    requireAuth0Client();
+    await handleAuthRedirectIfPresent();
+
+    const authenticated = await isAuthenticated();
+    if (!authenticated) {
+      renderLoggedOutState();
+      return;
+    }
+
+    renderLoggedInState();
+    setStatus("loading", "Loading portal");
+
+    renderSkeletonList("recentMaintenanceList", 3);
+    renderSkeletonList("homeAnnouncements", 2);
+    renderSkeletonList("maintenanceList", 4);
+    renderSkeletonList("documentsList", 4);
+    renderSkeletonList("announcementsList", 3);
+
+    await Promise.all([
+      loadMe(),
+      loadMaintenance(true),
+      loadDocuments(true),
+      loadAnnouncementsAndRender(true)
+    ]);
+
+    const savedView = getSavedView();
+    setActiveView(savedView, { skipScroll: true });
+
+    if (savedView === "maintenance") {
+      renderFilteredMaintenance();
+    } else if (savedView === "documents") {
+      renderDocuments(documentsCache);
+    } else if (savedView === "announcements") {
+      renderAnnouncements(announcementsCache, "announcementsList");
+    } else if (savedView === "profile") {
+      hydrateProfileForm();
+    } else {
+      updateDashboardMetrics();
+    }
+
+    setStatus("ok", "Connected");
+  } catch (error) {
+    console.error(error);
+    renderLoggedOutState();
+    showToast("We could not load the portal session. Please sign in again.");
+  }
 }
 
-boot().catch((e) => {
-  console.error(e);
-  setStatus("Auth init error", "bad");
-  showToast("Authentication failed. Check Auth0 settings.", "bad");
-});
+window.addEventListener("DOMContentLoaded", boot);
