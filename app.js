@@ -317,45 +317,46 @@ async function openViewAndLoad(viewName) {
 }
 
 function applyTenantProfileToShell(data) {
-  portalContext = data || {};
+  const ctx = data?.sf || data || {};
+  portalContext = ctx;
 
   const tenantName =
-    data?.tenantName ||
-    data?.name ||
-    data?.tenant?.name ||
-    data?.contactName ||
+    ctx?.tenantName ||
+    ctx?.name ||
+    ctx?.tenant?.name ||
+    ctx?.contactName ||
     "Tenant";
 
   const email =
-    data?.email ||
-    data?.personEmail ||
-    data?.tenantEmail ||
-    data?.tenant?.email ||
+    ctx?.email ||
+    ctx?.personEmail ||
+    ctx?.tenantEmail ||
+    ctx?.tenant?.email ||
     "—";
 
   const phone =
-    data?.phone ||
-    data?.mobilePhone ||
-    data?.personMobilePhone ||
-    data?.tenantPhone ||
+    ctx?.phone ||
+    ctx?.mobilePhone ||
+    ctx?.personMobilePhone ||
+    ctx?.tenantPhone ||
     "—";
 
   const property =
-    data?.property ||
-    data?.propertyName ||
-    data?.tenancy?.propertyName ||
+    ctx?.property ||
+    ctx?.propertyName ||
+    ctx?.tenancy?.propertyName ||
     "—";
 
   const unit =
-    data?.unit ||
-    data?.unitName ||
-    data?.tenancy?.unitName ||
+    ctx?.unit ||
+    ctx?.unitName ||
+    ctx?.tenancy?.unitName ||
     "—";
 
   const lease =
-    data?.lease ||
-    data?.leaseName ||
-    data?.tenancy?.leaseName ||
+    ctx?.lease ||
+    ctx?.leaseName ||
+    ctx?.tenancy?.leaseName ||
     "—";
 
   const initials = getInitials(tenantName);
@@ -942,9 +943,13 @@ async function api(path, opts = {}) {
 
 async function loadMe() {
   setStatus("loading", "Loading tenancy");
+
   const data = await api("/api/me");
-  applyTenantProfileToShell(data);
+  const context = data?.sf || data || {};
+
+  applyTenantProfileToShell(context);
   hydrateProfileForm();
+
   setStatus("ok", "Connected");
 }
 
