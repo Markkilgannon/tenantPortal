@@ -792,7 +792,63 @@ function hydrateProfileForm() {
   if ($("profilePhone")) $("profilePhone").value = phone;
 }
 
-function openMaintenanceDetail(item) {
+function renderMaintenanceTimeline(items) {
+  const target = $("maintenanceDetailTimeline");
+  if (!target) return;
+
+  if (!items || items.length === 0) {
+    target.innerHTML = `
+      <div class="timeline-empty">
+        <p>No tracking history is available for this request yet.</p>
+      </div>
+    `;
+    return;
+  }
+
+  target.innerHTML = items
+    .map((item) => {
+      const type = safeText(item.type, "Update");
+      const message = safeText(item.message, "No update message was provided.");
+      const createdByName = safeText(item.createdByName, "Portal");
+      const createdByType = safeText(item.createdByType, "");
+      const statusSnapshot = safeText(item.statusSnapshot, "");
+      const eventDate = safeDateTime(item.eventDateTime);
+
+      const subParts = [createdByName];
+      if (createdByType && createdByType !== "—") subParts.push(createdByType);
+      if (statusSnapshot && statusSnapshot !== "—") subParts.push(`Status: ${statusSnapshot}`);
+
+      return `
+        <article class="timeline-item">
+          <div class="timeline-item__top">
+            <p class="timeline-item__title">${escapeHtml(type)}</p>
+            <p class="timeline-item__meta">${escapeHtml(eventDate)}</p>
+          </div>
+          <p class="timeline-item__body">${escapeHtml(message)}</p>
+          <p class="timeline-item__sub">${escapeHtml(subParts.join(" • "))}</p>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+async function loadMaintenanceDetail(id) {
+  if (!id) {
+    throw new Error("Maintenance ID is required.");
+  }
+
+  const data = await api(`/api/maintenance-detail?id=${encodeURIComponent(id)}`);
+  return data?.item || null;
+}
+
+async function openMaintenanceDetail(item) {
+  const id = item?.id || item?.maintenanceId;
+
+  if (!id) {
+    showToast("Unable to open this maintenance request.");
+    return;
+  }
+
   $("maintenanceDetailTitle").textContent = safeText(item.subject, "Request details");
   $("maintenanceDetailStatus").innerHTML = `
     <span class="badge ${normaliseStatusClass(item.status)}">${escapeHtml(
@@ -806,10 +862,54 @@ function openMaintenanceDetail(item) {
   );
   $("maintenanceDetailUpdate").textContent = safeText(
     item.portalUpdate,
-    "No update available."
+    "Loading latest update..."
   );
 
+  renderMaintenanceTimeline([]);
   openModal("maintenanceDetailModal");
+  setStatus("loading", "Loading request details");
+
+  try {
+    const detail = await loadMaintenanceDetail(id);
+
+    if (!detail) {
+      throw new Error("Maintenance detail was not returned.");
+    }
+
+    $("maintenanceDetailTitle").textContent = safeText(
+      detail.referenceNumber
+        ? `${detail.referenceNumber} · ${detail.subject || "Request details"}`
+        : detail.subject,
+      "Request details"
+    );
+
+    $("maintenanceDetailStatus").innerHTML = `
+      <span class="badge ${normaliseStatusClass(detail.status)}">${escapeHtml(
+        safeText(detail.status, "Unknown")
+      )}</span>
+    `;
+
+    $("maintenanceDetailSubmitted").textContent = safeDateTime(detail.createdDate);
+
+    $("maintenanceDetailDescription").textContent = safeText(
+      detail.description,
+      "No description was provided."
+    );
+
+    $("maintenanceDetailUpdate").textContent = safeText(
+      detail.portalUpdate,
+      "No update available."
+    );
+
+    renderMaintenanceTimeline(detail.timeline || []);
+    setStatus("ok", "Connected");
+  } catch (error) {
+    console.error(error);
+    $("maintenanceDetailUpdate").textContent = "Unable to load the latest update.";
+    renderMaintenanceTimeline([]);
+    setStatus("error", "Service unavailable");
+    showToast(error.message || "Unable to load maintenance details.");
+  }
 }
 
 function openMaintenanceModal() {
@@ -1219,9 +1319,6 @@ function initAuthButtons() {
 
   $("maintenanceCreateBtn")?.addEventListener("click", openMaintenanceModal);
 
-  $("openSidebarBtn")?.addEventListener("click", openSidebar);
-  $("closeSidebarBtn")?.addEventListener("click", closeSidebar);
-  $("mobileSidebarOverlay")?.addEventListener("click", closeSidebar);
 
   document.addEventListener("click", async (event) => {
     const openViewBtn = event.target.closest("[data-open-view]");
@@ -1263,7 +1360,7 @@ function initAuthButtons() {
       const item = maintenanceItemsCache.find((m) => {
         return String(m.id || m.maintenanceId) === String(id);
       });
-      if (item) openMaintenanceDetail(item);
+      if (item) await openMaintenanceDetail(item);
       return;
     }
 
@@ -1273,7 +1370,7 @@ function initAuthButtons() {
       const item = maintenanceItemsCache.find((m) => {
         return String(m.id || m.maintenanceId) === String(id);
       });
-      if (item) openMaintenanceDetail(item);
+      if (item) await openMaintenanceDetail(item);
     }
   });
 
