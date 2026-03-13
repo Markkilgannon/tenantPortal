@@ -340,7 +340,6 @@ function applyTenantProfileToShell(data) {
   $("sidebarInitials").textContent = initials;
 
   $("topbarTenantName").textContent = tenantName;
-  $("topbarTenantSub").textContent = tenantSub;
   $("topbarInitials").textContent = initials;
 
   $("detailTenantName").textContent = tenantName;
