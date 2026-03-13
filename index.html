@@ -13,7 +13,6 @@
 </head>
 <body>
   <div class="portal-root">
-    <!-- Guest / auth loading -->
     <section id="authLoading" class="guest-screen guest-screen--muted">
       <div class="guest-card">
         <div class="brand-lockup">
@@ -52,7 +51,6 @@
       </div>
     </section>
 
-    <!-- App shell -->
     <div id="app" class="app-shell hidden">
       <div id="mobileSidebarOverlay" class="mobile-sidebar-overlay"></div>
 
@@ -62,7 +60,7 @@
             <div class="brand-lockup__mark">TP</div>
             <div>
               <p class="eyebrow eyebrow--tight">Tenant Portal</p>
-              <h2 class="sidebar__title">Operations Console</h2>
+              <h2 class="sidebar__title">Tenant Workspace</h2>
             </div>
           </div>
 
@@ -99,7 +97,7 @@
             <div id="sidebarInitials" class="avatar">TP</div>
             <div class="tenant-mini__meta">
               <p id="sidebarTenantName" class="tenant-mini__title">Tenant</p>
-              <p id="sidebarTenantEmail" class="tenant-mini__sub">—</p>
+              <p id="sidebarTenantSub" class="tenant-mini__sub">—</p>
             </div>
           </div>
 
@@ -148,14 +146,13 @@
               <div id="topbarInitials" class="avatar avatar--sm">TP</div>
               <div class="tenant-chip__meta">
                 <p id="topbarTenantName" class="tenant-chip__title">Tenant</p>
-                <p id="topbarTenantEmail" class="tenant-chip__sub">—</p>
+                <p id="topbarTenantSub" class="tenant-chip__sub">—</p>
               </div>
             </div>
           </div>
         </header>
 
         <div class="content-shell">
-          <!-- HOME -->
           <section id="view-home" class="view is-active" aria-label="Home view">
             <div class="metrics-grid">
               <article class="metric-card">
@@ -284,7 +281,6 @@
             </div>
           </section>
 
-          <!-- MAINTENANCE -->
           <section id="view-maintenance" class="view" aria-label="Maintenance view">
             <article class="panel-card">
               <div class="section-header section-header--stack-mobile">
@@ -312,7 +308,6 @@
             </article>
           </section>
 
-          <!-- DOCUMENTS -->
           <section id="view-documents" class="view" aria-label="Documents view">
             <article class="panel-card">
               <div class="section-header">
@@ -326,7 +321,6 @@
             </article>
           </section>
 
-          <!-- ANNOUNCEMENTS -->
           <section id="view-announcements" class="view" aria-label="Announcements view">
             <article class="panel-card">
               <div class="section-header">
@@ -340,7 +334,6 @@
             </article>
           </section>
 
-          <!-- PROFILE -->
           <section id="view-profile" class="view" aria-label="Profile view">
             <article class="panel-card panel-card--narrow">
               <div class="section-header">
@@ -376,12 +369,10 @@
       </main>
     </div>
 
-    <!-- Toast -->
     <div id="toast" class="toast hidden" role="status" aria-live="polite">
       <span id="toastText"></span>
     </div>
 
-    <!-- Maintenance create modal -->
     <div id="maintenanceModal" class="modal hidden" aria-hidden="true">
       <div class="modal__backdrop" data-close-modal="maintenanceModal"></div>
       <div class="modal__dialog" role="dialog" aria-modal="true" aria-labelledby="maintenanceModalTitle">
@@ -429,7 +420,6 @@
       </div>
     </div>
 
-    <!-- Maintenance detail modal -->
     <div id="maintenanceDetailModal" class="modal hidden" aria-hidden="true">
       <div class="modal__backdrop" data-close-modal="maintenanceDetailModal"></div>
       <div class="modal__dialog modal__dialog--wide" role="dialog" aria-modal="true" aria-labelledby="maintenanceDetailTitle">
@@ -474,7 +464,6 @@
       </div>
     </div>
 
-    <!-- Logout modal -->
     <div id="logoutModal" class="modal hidden" aria-hidden="true">
       <div class="modal__backdrop" data-close-modal="logoutModal"></div>
       <div class="modal__dialog modal__dialog--small" role="dialog" aria-modal="true" aria-labelledby="logoutModalTitle">
