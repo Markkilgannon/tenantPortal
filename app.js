@@ -17,36 +17,11 @@ let activeModalId = null;
 let toastTimer = null;
 
 const pageMeta = {
-  home: {
-    eyebrow: "Dashboard",
-    title: "Home",
-    subtitle: "Overview of your tenancy, updates, and actions.",
-    primaryAction: null
-  },
-  maintenance: {
-    eyebrow: "Maintenance",
-    title: "Maintenance",
-    subtitle: "Track requests, review updates, and report new issues.",
-    primaryAction: "New Request"
-  },
-  documents: {
-    eyebrow: "Documents",
-    title: "Documents",
-    subtitle: "Access files related to your tenancy and property.",
-    primaryAction: null
-  },
-  announcements: {
-    eyebrow: "Announcements",
-    title: "Announcements",
-    subtitle: "Stay informed about property and tenancy updates.",
-    primaryAction: null
-  },
-  profile: {
-    eyebrow: "Profile",
-    title: "Profile",
-    subtitle: "Keep your email and phone number up to date.",
-    primaryAction: null
-  }
+  home: { title: "Home" },
+  maintenance: { title: "Maintenance" },
+  documents: { title: "Documents" },
+  announcements: { title: "Announcements" },
+  profile: { title: "Profile" }
 };
 
 function $(id) {
@@ -275,18 +250,7 @@ function renderEmptyState({
 
 function updateTopbarMeta(viewName) {
   const meta = pageMeta[viewName] || pageMeta.home;
-  $("pageEyebrow").textContent = meta.eyebrow;
   $("pageTitle").textContent = meta.title;
-  $("pageSubtitle").textContent = meta.subtitle;
-
-  const actionBtn = $("topbarPrimaryAction");
-  if (!meta.primaryAction) {
-    actionBtn.classList.add("hidden");
-    actionBtn.textContent = "";
-  } else {
-    actionBtn.classList.remove("hidden");
-    actionBtn.textContent = meta.primaryAction;
-  }
 }
 
 function setActiveView(viewName, options = {}) {
@@ -1224,11 +1188,6 @@ function initAuthButtons() {
   $("confirmLogoutBtn")?.addEventListener("click", logout);
 
   $("maintenanceCreateBtn")?.addEventListener("click", openMaintenanceModal);
-  $("topbarPrimaryAction")?.addEventListener("click", () => {
-    if (!$("topbarPrimaryAction").classList.contains("hidden")) {
-      openMaintenanceModal();
-    }
-  });
 
   $("openSidebarBtn")?.addEventListener("click", openSidebar);
   $("closeSidebarBtn")?.addEventListener("click", closeSidebar);
