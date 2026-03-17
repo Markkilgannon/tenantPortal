@@ -841,13 +841,9 @@ function renderMaintenanceTimeline(items) {
 }
 
 function safeMessageAuthor(item) {
-  return (
-    item?.createdByName ||
-    item?.senderName ||
-    item?.senderType ||
-    (item?.isFromPortal ? "Tenant" : "Property Team") ||
-    "User"
-  );
+  const senderType = String(item?.senderType || "").trim().toLowerCase();
+  const isTenant = senderType === "tenant" || item?.isFromPortal === true;
+  return isTenant ? "You" : "Property Team";
 }
 
 function renderMaintenanceMessages(items) {
@@ -982,6 +978,21 @@ async function sendMaintenanceMessage(maintenanceId, message) {
 
 async function openMaintenanceDetail(item) {
   const id = item?.id || item?.maintenanceId;
+  const historyToggle = $("maintenanceHistoryToggle");
+const historyPanel = $("maintenanceHistoryPanel");
+
+if (historyToggle) {
+  historyToggle.setAttribute("aria-expanded", "false");
+}
+if (historyPanel) {
+  historyPanel.classList.add("hidden");
+}
+if ($("maintenanceHistoryCount")) {
+  $("maintenanceHistoryCount").textContent = "0 updates";
+}
+if ($("maintenanceDetailMeta")) {
+  $("maintenanceDetailMeta").textContent = "—";
+}
 
   if (!id) {
     showToast("Unable to open this maintenance request.");
@@ -1088,6 +1099,21 @@ async function openMaintenanceDetail(item) {
       );
     }
 
+    if ($("maintenanceHistoryCount")) {
+  const updateCount = Array.isArray(detail.timeline) ? detail.timeline.length : 0;
+  $("maintenanceHistoryCount").textContent =
+    `${updateCount} ${updateCount === 1 ? "update" : "updates"}`;
+}
+
+if ($("maintenanceDetailMeta")) {
+  const metaParts = [
+    detail.referenceNumber || detail.name || null,
+    detail.createdDate ? `Submitted ${safeDateTime(detail.createdDate)}` : null
+  ].filter(Boolean);
+
+  $("maintenanceDetailMeta").textContent = metaParts.join(" • ") || "—";
+}
+
     renderMaintenanceTimeline(detail.timeline || []);
     renderMaintenanceMessages(messages || []);
     setStatus("ok", "Connected");
@@ -1111,6 +1137,19 @@ function openMaintenanceModal() {
   setMaintenanceMessage("", "");
   openModal("maintenanceModal");
   setTimeout(() => $("subject")?.focus(), 50);
+}
+
+function initMaintenanceHistoryAccordion() {
+  const toggle = $("maintenanceHistoryToggle");
+  const panel = $("maintenanceHistoryPanel");
+
+  if (!toggle || !panel) return;
+
+  toggle.addEventListener("click", () => {
+    const isExpanded = toggle.getAttribute("aria-expanded") === "true";
+    toggle.setAttribute("aria-expanded", String(!isExpanded));
+    panel.classList.toggle("hidden", isExpanded);
+  });
 }
 
 function openLogoutModal() {
@@ -1689,6 +1728,7 @@ async function boot() {
   initTenancyDetailEditButtons();
   initSidebarControls();
   initMaintenanceMessaging();
+  initMaintenanceHistoryAccordion();
 
   try {
     requireAuth0Client();
