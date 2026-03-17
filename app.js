@@ -1024,13 +1024,6 @@ if ($("maintenanceDetailMeta")) {
     );
   }
 
-  if ($("maintenanceDetailUpdate")) {
-    $("maintenanceDetailUpdate").textContent = safeText(
-      item.portalUpdate,
-      "Loading latest update..."
-    );
-  }
-
   if ($("maintenanceDetailReference")) {
     $("maintenanceDetailReference").textContent = safeText(
       item.referenceNumber || item.name || "—"
@@ -1086,12 +1079,6 @@ if ($("maintenanceDetailMeta")) {
       );
     }
 
-    if ($("maintenanceDetailUpdate")) {
-      $("maintenanceDetailUpdate").textContent = safeText(
-        detail.portalUpdate,
-        "No update available."
-      );
-    }
 
     if ($("maintenanceDetailReference")) {
       $("maintenanceDetailReference").textContent = safeText(
