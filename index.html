@@ -437,16 +437,18 @@
 <div id="maintenanceDetailModal" class="modal hidden" aria-hidden="true">
   <div class="modal__backdrop" data-close-modal="maintenanceDetailModal"></div>
   <div
-    class="modal__dialog modal__dialog--wide modal__dialog--split"
+    class="modal__dialog modal__dialog--wide modal__dialog--request"
     role="dialog"
     aria-modal="true"
     aria-labelledby="maintenanceDetailTitle"
   >
-    <div class="modal__header">
+    <div class="modal__header modal__header--request">
       <div>
-        <p class="eyebrow eyebrow--tight">Maintenance</p>
+        <p class="eyebrow eyebrow--tight">Maintenance request</p>
         <h2 id="maintenanceDetailTitle" class="modal__title">Request details</h2>
+        <p id="maintenanceDetailMeta" class="modal__meta-row">—</p>
       </div>
+
       <button
         class="icon-btn"
         data-close-modal="maintenanceDetailModal"
@@ -457,87 +459,104 @@
       </button>
     </div>
 
-    <div class="maintenance-detail-layout">
-      <section class="maintenance-detail-main">
-        <div class="detail-summary">
-          <div class="detail-summary__meta">
-            <div class="detail-summary__row">
-              <span class="detail-summary__label">Status</span>
-              <span id="maintenanceDetailStatus"></span>
-            </div>
-            <div class="detail-summary__row">
-              <span class="detail-summary__label">Submitted</span>
-              <span id="maintenanceDetailSubmitted">—</span>
-            </div>
-            <div class="detail-summary__row">
-              <span class="detail-summary__label">Reference</span>
-              <span id="maintenanceDetailReference">—</span>
-            </div>
-          </div>
+    <div class="request-summary-card">
+      <div class="request-summary-grid">
+        <div class="request-summary-item">
+          <span class="request-summary-item__label">Status</span>
+          <div id="maintenanceDetailStatus"></div>
         </div>
 
-        <div class="detail-block">
-          <p class="detail-block__label">Description</p>
-          <p id="maintenanceDetailDescription" class="detail-block__text">—</p>
+        <div class="request-summary-item">
+          <span class="request-summary-item__label">Submitted</span>
+          <span id="maintenanceDetailSubmitted">—</span>
         </div>
 
-        <div class="detail-block">
-          <p class="detail-block__label">Latest portal update</p>
-          <p id="maintenanceDetailUpdate" class="detail-block__text">
-            No update available.
-          </p>
+        <div class="request-summary-item">
+          <span class="request-summary-item__label">Reference</span>
+          <span id="maintenanceDetailReference">—</span>
         </div>
 
-        <div class="detail-block">
-          <p class="detail-block__label">Tracking history</p>
-          <div id="maintenanceDetailTimeline" class="timeline-list"></div>
+        <div class="request-summary-item request-summary-item--wide">
+          <span class="request-summary-item__label">Latest update</span>
+          <span id="maintenanceDetailUpdate">No update available.</span>
         </div>
-      </section>
-
-      <aside class="maintenance-detail-chat">
-        <div class="detail-block detail-block--chat">
-          <div class="detail-block__header">
-            <div>
-              <p class="detail-block__label">Messages</p>
-              <p class="detail-block__subtext">Chat with the property team</p>
-            </div>
-          </div>
-
-          <div id="maintenanceMessagesList" class="chat-thread">
-            <div class="chat-empty">
-              No messages yet. Start the conversation with the property team.
-            </div>
-          </div>
-
-          <div class="chat-composer">
-            <label class="field hidden-visually" for="maintenanceMessageInput">
-              Message
-            </label>
-            <textarea
-              id="maintenanceMessageInput"
-              class="input input--textarea chat-composer__input"
-              rows="4"
-              maxlength="1000"
-              placeholder="Write a message..."
-            ></textarea>
-
-            <div id="maintenanceMessageMeta" class="field__help">
-              Press Enter to send. Shift + Enter for a new line.
-            </div>
-
-            <div class="chat-composer__actions">
-              <button
-                id="maintenanceMessageSendBtn"
-                class="btn btn--primary"
-                type="button"
-              >
-                Send message
-              </button>
-            </div>
-          </div>
-        </div>
-      </aside>
+      </div>
     </div>
+
+    <div class="request-description-card">
+      <p class="detail-block__label">Description</p>
+      <p id="maintenanceDetailDescription" class="detail-block__text">—</p>
+    </div>
+
+    <section class="request-chat-card">
+      <div class="request-chat-card__header">
+        <div>
+          <p class="detail-block__label">Messages</p>
+          <p class="detail-block__subtext">Chat with the property team</p>
+        </div>
+      </div>
+
+      <div id="maintenanceMessagesList" class="chat-thread">
+        <div class="chat-empty">
+          No messages yet. Start the conversation with the property team.
+        </div>
+      </div>
+
+      <div class="chat-composer">
+        <label class="hidden-visually" for="maintenanceMessageInput">Message</label>
+        <textarea
+          id="maintenanceMessageInput"
+          class="chat-composer__input"
+          rows="2"
+          maxlength="1000"
+          placeholder="Write a message..."
+        ></textarea>
+
+        <button
+          id="maintenanceMessageSendBtn"
+          class="chat-composer__send"
+          type="button"
+        >
+          Send
+        </button>
+      </div>
+
+      <p id="maintenanceMessageMeta" class="chat-composer__meta">
+        Press Enter to send. Shift + Enter for a new line.
+      </p>
+    </section>
+
+    <section class="request-history-card">
+      <button
+        id="maintenanceHistoryToggle"
+        class="history-toggle"
+        type="button"
+        aria-expanded="false"
+        aria-controls="maintenanceHistoryPanel"
+      >
+        <span>View full tracking history</span>
+        <span id="maintenanceHistoryCount" class="history-toggle__count">0 updates</span>
+      </button>
+
+      <div
+        id="maintenanceHistoryPanel"
+        class="history-panel hidden"
+      >
+        <div id="maintenanceDetailTimeline" class="timeline-list timeline-list--history"></div>
+      </div>
+    </section>
+
+    <div class="modal__footer">
+      <button
+        class="btn btn--ghost"
+        data-close-modal="maintenanceDetailModal"
+        type="button"
+      >
+        Close
+      </button>
+    </div>
+  </div>
+</div>
 
     <div class="modal__footer">
       <button
