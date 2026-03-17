@@ -1,189 +1,34 @@
-function json(data, status = 200) {
-  return new Response(JSON.stringify(data), {
-    status,
-    headers: {
-      "Content-Type": "application/json"
-    }
-  });
-}
+import { getSalesforceAccessToken } from "./_sf";
 
-function getEnv(name, env) {
-  const value = env?.[name];
-  if (!value) {
-    throw new Error(`Missing environment variable: ${name}`);
-  }
-  return value;
-}
+const AUTH0_ISSUER = "https://dev-v3g60bdgfjg7walx.us.auth0.com/";
+const JWKS_URL = "https://dev-v3g60bdgfjg7walx.us.auth0.com/.well-known/jwks.json";
 
-function getBearerToken(request) {
+async function verifyJwt(request, env) {
   const authHeader = request.headers.get("Authorization") || "";
-  if (!authHeader.startsWith("Bearer ")) {
-    return null;
-  }
-  return authHeader.slice(7).trim();
-}
-
-async function verifyPortalUser(request, env) {
-  const token = getBearerToken(request);
+  const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
 
   if (!token) {
-    return {
-      ok: false,
-      response: json({ message: "Missing bearer token." }, 401)
-    };
+    throw new Error("Missing bearer token");
   }
 
-  const authVerifyUrl = `${new URL(request.url).origin}/api/me`;
+  const { jwtVerify, createRemoteJWKSet } = await import("jose");
+  const JWKS = createRemoteJWKSet(new URL(JWKS_URL));
 
-  try {
-    const meResponse = await fetch(authVerifyUrl, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${token}`
-      }
-    });
+  const { payload } = await jwtVerify(token, JWKS, {
+    issuer: env.AUTH0_ISSUER || AUTH0_ISSUER,
+    audience: env.AUTH0_AUDIENCE
+  });
 
-    if (!meResponse.ok) {
-      const text = await meResponse.text();
-      return {
-        ok: false,
-        response: json(
-          {
-            message: "Unauthorised portal session.",
-            details: text || "Unable to verify user session."
-          },
-          401
-        )
-      };
+  return payload;
+}
+
+function jsonResponse(body, status = 200) {
+  return new Response(JSON.stringify(body), {
+    status,
+    headers: {
+      "Content-Type": "application/json",
+      "Cache-Control": "no-store"
     }
-
-    const meData = await meResponse.json().catch(() => null);
-
-    return {
-      ok: true,
-      token,
-      meData
-    };
-  } catch (error) {
-    return {
-      ok: false,
-      response: json(
-        {
-          message: "Failed to verify portal session.",
-          details: error.message
-        },
-        500
-      )
-    };
-  }
-}
-
-async function getSalesforceAccessToken(env) {
-  const loginUrl = getEnv("SF_LOGIN_URL", env);
-  const clientId = getEnv("SF_CLIENT_ID", env);
-  const clientSecret = getEnv("SF_CLIENT_SECRET", env);
-  const username = getEnv("SF_USERNAME", env);
-  const password = getEnv("SF_PASSWORD", env);
-
-  const body = new URLSearchParams({
-    grant_type: "password",
-    client_id: clientId,
-    client_secret: clientSecret,
-    username,
-    password
-  });
-
-  const response = await fetch(`${loginUrl}/services/oauth2/token`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded"
-    },
-    body
-  });
-
-  const text = await response.text();
-  let data = null;
-
-  try {
-    data = text ? JSON.parse(text) : null;
-  } catch {
-    data = null;
-  }
-
-  if (!response.ok) {
-    throw new Error(
-      data?.error_description ||
-        data?.error ||
-        `Salesforce token request failed with status ${response.status}`
-    );
-  }
-
-  if (!data?.access_token || !data?.instance_url) {
-    throw new Error("Salesforce token response was incomplete.");
-  }
-
-  return {
-    accessToken: data.access_token,
-    instanceUrl: data.instance_url
-  };
-}
-
-async function callSalesforce({ env, method, path, body }) {
-  const { accessToken, instanceUrl } = await getSalesforceAccessToken(env);
-
-  const response = await fetch(`${instanceUrl}${path}`, {
-    method,
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      "Content-Type": "application/json"
-    },
-    body: body ? JSON.stringify(body) : undefined
-  });
-
-  const rawText = await response.text();
-
-  let data = null;
-  try {
-    data = rawText ? JSON.parse(rawText) : null;
-  } catch {
-    data = null;
-  }
-
-  if (!response.ok) {
-    return {
-      ok: false,
-      status: response.status,
-      rawText,
-      data
-    };
-  }
-
-  return {
-    ok: true,
-    status: response.status,
-    rawText,
-    data
-  };
-}
-
-function validateMaintenanceOwnership(maintenanceId, meData) {
-  const items = Array.isArray(meData)
-    ? meData
-    : Array.isArray(meData?.items)
-    ? meData.items
-    : Array.isArray(meData?.maintenance)
-    ? meData.maintenance
-    : Array.isArray(meData?.sf?.maintenance)
-    ? meData.sf.maintenance
-    : null;
-
-  if (!items) {
-    return true;
-  }
-
-  return items.some((item) => {
-    const id = item?.id || item?.maintenanceId;
-    return String(id) === String(maintenanceId);
   });
 }
 
@@ -191,57 +36,56 @@ export async function onRequestGet(context) {
   const { request, env } = context;
 
   try {
-    const authCheck = await verifyPortalUser(request, env);
-    if (!authCheck.ok) return authCheck.response;
+    const payload = await verifyJwt(request, env);
+    const sub = payload.sub;
+
+    if (!sub) {
+      return jsonResponse(
+        { ok: false, message: "Missing subject" },
+        401
+      );
+    }
 
     const url = new URL(request.url);
     const maintenanceId = url.searchParams.get("maintenanceId");
 
     if (!maintenanceId) {
-      return json({ message: "maintenanceId is required." }, 400);
-    }
-
-    const allowed = validateMaintenanceOwnership(maintenanceId, authCheck.meData);
-    if (!allowed) {
-      return json(
-        { message: "You do not have access to this maintenance request." },
-        403
+      return jsonResponse(
+        { ok: false, message: "Missing maintenanceId" },
+        400
       );
     }
 
-    const sfResult = await callSalesforce({
-      env,
+    const sfAuth = await getSalesforceAccessToken(env);
+
+    const apexUrl =
+      `${sfAuth.instance_url}` +
+      `/services/apexrest/portal/messages` +
+      `?sub=${encodeURIComponent(sub)}` +
+      `&maintenanceId=${encodeURIComponent(maintenanceId)}`;
+
+    const sfRes = await fetch(apexUrl, {
       method: "GET",
-      path: `/services/apexrest/portal/messages?maintenanceId=${encodeURIComponent(
-        maintenanceId
-      )}`
+      headers: {
+        Authorization: `Bearer ${sfAuth.access_token}`,
+        Accept: "application/json"
+      }
     });
 
-    if (!sfResult.ok) {
-      return json(
-        {
-          message:
-            sfResult.data?.message ||
-            `Salesforce messages GET failed with status ${sfResult.status}`,
-          details: sfResult.rawText?.slice(0, 1000) || null
-        },
-        sfResult.status || 500
-      );
-    }
+    const text = await sfRes.text();
 
-    return json(
-      {
-        messages: Array.isArray(sfResult.data?.messages)
-          ? sfResult.data.messages
-          : []
-      },
-      200
-    );
+    return new Response(text, {
+      status: sfRes.status,
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-store"
+      }
+    });
   } catch (error) {
-    return json(
+    return jsonResponse(
       {
-        message: "Failed to load messages.",
-        details: error.message
+        ok: false,
+        message: error.message || "Server error"
       },
       500
     );
@@ -252,72 +96,83 @@ export async function onRequestPost(context) {
   const { request, env } = context;
 
   try {
-    const authCheck = await verifyPortalUser(request, env);
-    if (!authCheck.ok) return authCheck.response;
+    const payload = await verifyJwt(request, env);
+    const sub = payload.sub;
 
-    const payload = await request.json().catch(() => null);
-
-    if (!payload) {
-      return json({ message: "A valid JSON body is required." }, 400);
+    if (!sub) {
+      return jsonResponse(
+        { ok: false, message: "Missing subject" },
+        401
+      );
     }
 
-    const maintenanceId = payload.maintenanceId;
-    const message = String(payload.message || "").trim();
+    const body = await request.json().catch(() => null);
+
+    if (!body) {
+      return jsonResponse(
+        { ok: false, message: "Invalid JSON body" },
+        400
+      );
+    }
+
+    const maintenanceId = body.maintenanceId;
+    const message = String(body.message || "").trim();
 
     if (!maintenanceId) {
-      return json({ message: "maintenanceId is required." }, 400);
+      return jsonResponse(
+        { ok: false, message: "Missing maintenanceId" },
+        400
+      );
     }
 
     if (!message) {
-      return json({ message: "message is required." }, 400);
+      return jsonResponse(
+        { ok: false, message: "Message is required" },
+        400
+      );
     }
 
     if (message.length > 1000) {
-      return json({ message: "message must be 1000 characters or less." }, 400);
-    }
-
-    const allowed = validateMaintenanceOwnership(maintenanceId, authCheck.meData);
-    if (!allowed) {
-      return json(
-        { message: "You do not have access to this maintenance request." },
-        403
+      return jsonResponse(
+        { ok: false, message: "Message must be 1000 characters or less" },
+        400
       );
     }
 
-    const sfResult = await callSalesforce({
-      env,
+    const sfAuth = await getSalesforceAccessToken(env);
+
+    const apexUrl =
+      `${sfAuth.instance_url}` +
+      `/services/apexrest/portal/messages`;
+
+    const sfRes = await fetch(apexUrl, {
       method: "POST",
-      path: `/services/apexrest/portal/messages`,
-      body: {
+      headers: {
+        Authorization: `Bearer ${sfAuth.access_token}`,
+        "Content-Type": "application/json",
+        Accept: "application/json"
+      },
+      body: JSON.stringify({
+        sub,
         maintenanceId,
         message
-      }
+      })
     });
 
-    if (!sfResult.ok) {
-      return json(
-        {
-          message:
-            sfResult.data?.message ||
-            `Salesforce messages POST failed with status ${sfResult.status}`,
-          details: sfResult.rawText?.slice(0, 1000) || null
-        },
-        sfResult.status || 500
-      );
-    }
+    const text = await sfRes.text();
 
-    return json(
-      {
-        success: sfResult.data?.success === true,
-        messageRecord: sfResult.data?.messageRecord || null
-      },
-      200
-    );
+    return new Response(text, {
+      status: sfRes.status,
+      headers: {
+        "Content-Type": "application/json",
+        "Cache-Control": "no-store"
+      }
+    });
   } catch (error) {
-    return json(
+    return jsonResponse(
       {
-        message: "Failed to send message.",
-        details: error.message
+        ok: false,
+        message: error.message || "Server error"
       },
       500
     );
