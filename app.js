@@ -15,6 +15,9 @@ let announcementsCache = [];
 let maintenanceFilter = "all";
 let activeModalId = null;
 let toastTimer = null;
+let maintenanceMessagesCache = {};
+let activeMaintenanceItem = null;
+let isSendingMaintenanceMessage = false;
 
 const pageMeta = {
   home: { title: "Home" },
@@ -210,6 +213,10 @@ function normaliseStatusClass(status) {
   if (key === "in progress") return "badge--in-progress";
   if (key === "waiting for contractor") return "badge--waiting-for-contractor";
   if (key === "completed") return "badge--completed";
+  if (key === "closed") return "badge--completed";
+  if (key === "scheduled") return "badge--in-progress";
+  if (key === "under review") return "badge--default";
+  if (key === "cancelled") return "badge--default";
   return "badge--default";
 }
 
@@ -384,7 +391,7 @@ function applyTenantProfileToShell(data) {
 function updateDashboardMetrics() {
   const openItems = maintenanceItemsCache.filter((item) => {
     const status = String(item.status || "").toLowerCase();
-    return status !== "completed";
+    return !["completed", "closed", "cancelled"].includes(status);
   });
 
   const tenancyStatus =
@@ -465,7 +472,8 @@ function renderHomeCallout() {
   });
 
   const openMaintenance = maintenanceItemsCache.filter((item) => {
-    return String(item.status || "").toLowerCase() !== "completed";
+    const status = String(item.status || "").toLowerCase();
+    return !["completed", "closed", "cancelled"].includes(status);
   });
 
   const missingProfile =
@@ -807,12 +815,12 @@ function renderMaintenanceTimeline(items) {
 
   target.innerHTML = items
     .map((item) => {
-      const type = safeText(item.type, "Update");
+      const type = safeText(item.type || item.updateType, "Update");
       const message = safeText(item.message, "No update message was provided.");
       const createdByName = safeText(item.createdByName, "Portal");
       const createdByType = safeText(item.createdByType, "");
       const statusSnapshot = safeText(item.statusSnapshot, "");
-      const eventDate = safeDateTime(item.eventDateTime);
+      const eventDate = safeDateTime(item.eventDateTime || item.createdDate);
 
       const subParts = [createdByName];
       if (createdByType && createdByType !== "—") subParts.push(createdByType);
@@ -830,6 +838,51 @@ function renderMaintenanceTimeline(items) {
       `;
     })
     .join("");
+}
+
+function safeMessageAuthor(item) {
+  return (
+    item?.createdByName ||
+    item?.senderName ||
+    item?.senderType ||
+    (item?.isFromPortal ? "Tenant" : "Property Team") ||
+    "User"
+  );
+}
+
+function renderMaintenanceMessages(items) {
+  const target = $("maintenanceMessagesList");
+  if (!target) return;
+
+  if (!items || items.length === 0) {
+    target.innerHTML = `
+      <div class="chat-empty">
+        No messages yet. Start the conversation with the property team.
+      </div>
+    `;
+    return;
+  }
+
+  target.innerHTML = items
+    .map((item) => {
+      const senderType = String(item?.senderType || "").trim().toLowerCase();
+      const isTenant =
+        senderType === "tenant" ||
+        item?.isFromPortal === true;
+
+      return `
+        <article class="chat-message ${isTenant ? "chat-message--tenant" : "chat-message--staff"}">
+          <div class="chat-message__meta">
+            <span class="chat-message__author">${escapeHtml(safeMessageAuthor(item))}</span>
+            <span>${escapeHtml(safeDateTime(item?.createdDate))}</span>
+          </div>
+          <p class="chat-message__body">${escapeHtml(safeText(item?.message, ""))}</p>
+        </article>
+      `;
+    })
+    .join("");
+
+  target.scrollTop = target.scrollHeight;
 }
 
 async function loadMaintenanceDetail(id) {
@@ -873,6 +926,60 @@ async function loadMaintenanceDetail(id) {
   );
 }
 
+async function loadMaintenanceMessages(maintenanceId) {
+  if (!maintenanceId) {
+    throw new Error("Maintenance ID is required.");
+  }
+
+  const token = await getAccessToken();
+
+  const response = await fetch(
+    `/api/messages?maintenanceId=${encodeURIComponent(maintenanceId)}`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
+    }
+  );
+
+  const rawText = await response.text();
+  console.log("messages status", response.status);
+  console.log("messages raw", rawText);
+
+  let data = null;
+  try {
+    data = rawText ? JSON.parse(rawText) : null;
+  } catch (error) {
+    throw new Error(`Messages returned non-JSON: ${rawText.slice(0, 200)}`);
+  }
+
+  if (!response.ok) {
+    throw new Error(data?.message || `Messages request failed with status ${response.status}`);
+  }
+
+  const items = Array.isArray(data?.messages) ? data.messages : [];
+  maintenanceMessagesCache[maintenanceId] = items;
+  return items;
+}
+
+async function sendMaintenanceMessage(maintenanceId, message) {
+  if (!maintenanceId) {
+    throw new Error("Maintenance ID is required.");
+  }
+
+  const payload = {
+    maintenanceId,
+    message
+  };
+
+  const data = await api("/api/messages", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+
+  return data;
+}
+
 async function openMaintenanceDetail(item) {
   const id = item?.id || item?.maintenanceId;
 
@@ -881,64 +988,116 @@ async function openMaintenanceDetail(item) {
     return;
   }
 
-  $("maintenanceDetailTitle").textContent = safeText(item.subject, "Request details");
-  $("maintenanceDetailStatus").innerHTML = `
-    <span class="badge ${normaliseStatusClass(item.status)}">${escapeHtml(
-      safeText(item.status, "Unknown")
-    )}</span>
-  `;
-  $("maintenanceDetailSubmitted").textContent = safeDateTime(item.createdDate);
-  $("maintenanceDetailDescription").textContent = safeText(
-    item.description,
-    "No description was provided."
-  );
-  $("maintenanceDetailUpdate").textContent = safeText(
-    item.portalUpdate,
-    "Loading latest update..."
-  );
+  activeMaintenanceItem = item;
+
+  if ($("maintenanceDetailTitle")) {
+    $("maintenanceDetailTitle").textContent = safeText(item.subject, "Request details");
+  }
+
+  if ($("maintenanceDetailStatus")) {
+    $("maintenanceDetailStatus").innerHTML = `
+      <span class="badge ${normaliseStatusClass(item.status)}">${escapeHtml(
+        safeText(item.status, "Unknown")
+      )}</span>
+    `;
+  }
+
+  if ($("maintenanceDetailSubmitted")) {
+    $("maintenanceDetailSubmitted").textContent = safeDateTime(item.createdDate);
+  }
+
+  if ($("maintenanceDetailDescription")) {
+    $("maintenanceDetailDescription").textContent = safeText(
+      item.description,
+      "No description was provided."
+    );
+  }
+
+  if ($("maintenanceDetailUpdate")) {
+    $("maintenanceDetailUpdate").textContent = safeText(
+      item.portalUpdate,
+      "Loading latest update..."
+    );
+  }
+
+  if ($("maintenanceDetailReference")) {
+    $("maintenanceDetailReference").textContent = safeText(
+      item.referenceNumber || item.name || "—"
+    );
+  }
 
   renderMaintenanceTimeline([]);
+  renderMaintenanceMessages([]);
+  if ($("maintenanceMessageInput")) $("maintenanceMessageInput").value = "";
+
   openModal("maintenanceDetailModal");
   setStatus("loading", "Loading request details");
 
   try {
-    const detail = await loadMaintenanceDetail(id);
+    const [detail, messages] = await Promise.all([
+      loadMaintenanceDetail(id),
+      maintenanceMessagesCache[id]
+        ? Promise.resolve(maintenanceMessagesCache[id])
+        : loadMaintenanceMessages(id)
+    ]);
 
-     if (!detail || !detail.id) {
+    if (!detail || !detail.id) {
       throw new Error("Maintenance detail response was incomplete.");
     }
 
-    $("maintenanceDetailTitle").textContent = safeText(
-      detail.referenceNumber
-        ? `${detail.referenceNumber} · ${detail.subject || "Request details"}`
-        : detail.subject,
-      "Request details"
-    );
+    activeMaintenanceItem = detail;
 
-    $("maintenanceDetailStatus").innerHTML = `
-      <span class="badge ${normaliseStatusClass(detail.status)}">${escapeHtml(
-        safeText(detail.status, "Unknown")
-      )}</span>
-    `;
+    if ($("maintenanceDetailTitle")) {
+      $("maintenanceDetailTitle").textContent = safeText(
+        detail.referenceNumber
+          ? `${detail.referenceNumber} · ${detail.subject || "Request details"}`
+          : detail.subject,
+        "Request details"
+      );
+    }
 
-    $("maintenanceDetailSubmitted").textContent = safeDateTime(detail.createdDate);
+    if ($("maintenanceDetailStatus")) {
+      $("maintenanceDetailStatus").innerHTML = `
+        <span class="badge ${normaliseStatusClass(detail.status)}">${escapeHtml(
+          safeText(detail.status, "Unknown")
+        )}</span>
+      `;
+    }
 
-    $("maintenanceDetailDescription").textContent = safeText(
-      detail.description,
-      "No description was provided."
-    );
+    if ($("maintenanceDetailSubmitted")) {
+      $("maintenanceDetailSubmitted").textContent = safeDateTime(detail.createdDate);
+    }
 
-    $("maintenanceDetailUpdate").textContent = safeText(
-      detail.portalUpdate,
-      "No update available."
-    );
+    if ($("maintenanceDetailDescription")) {
+      $("maintenanceDetailDescription").textContent = safeText(
+        detail.description,
+        "No description was provided."
+      );
+    }
+
+    if ($("maintenanceDetailUpdate")) {
+      $("maintenanceDetailUpdate").textContent = safeText(
+        detail.portalUpdate,
+        "No update available."
+      );
+    }
+
+    if ($("maintenanceDetailReference")) {
+      $("maintenanceDetailReference").textContent = safeText(
+        detail.referenceNumber || detail.name || "—"
+      );
+    }
 
     renderMaintenanceTimeline(detail.timeline || []);
+    renderMaintenanceMessages(messages || []);
     setStatus("ok", "Connected");
   } catch (error) {
     console.error(error);
-    $("maintenanceDetailUpdate").textContent = "Unable to load the latest update.";
+    if ($("maintenanceDetailUpdate")) {
+      $("maintenanceDetailUpdate").textContent = "Unable to load the latest update.";
+    }
     renderMaintenanceTimeline([]);
+    renderMaintenanceMessages([]);
     setStatus("error", "Service unavailable");
     showToast(error.message || "Unable to load maintenance details.");
   }
@@ -1344,13 +1503,93 @@ function initModalControls() {
   });
 }
 
+function initMaintenanceMessaging() {
+  const sendBtn = $("maintenanceMessageSendBtn");
+  const input = $("maintenanceMessageInput");
+
+  if (!sendBtn || !input) return;
+
+  async function handleSendMessage() {
+    if (isSendingMaintenanceMessage) return;
+
+    const maintenanceId =
+      activeMaintenanceItem?.id || activeMaintenanceItem?.maintenanceId;
+
+    if (!maintenanceId) {
+      showToast("No maintenance request is currently selected.");
+      return;
+    }
+
+    const message = (input.value || "").trim();
+
+    if (!message) {
+      showToast("Please enter a message before sending.");
+      return;
+    }
+
+    if (message.length > 1000) {
+      showToast("Messages must be 1000 characters or less.");
+      return;
+    }
+
+    isSendingMaintenanceMessage = true;
+    sendBtn.disabled = true;
+    sendBtn.textContent = "Sending...";
+    setStatus("loading", "Sending message");
+
+    try {
+      const response = await sendMaintenanceMessage(maintenanceId, message);
+
+      const createdMessage =
+        response?.messageRecord ||
+        {
+          message,
+          senderType: "Tenant",
+          isFromPortal: true,
+          createdDate: new Date().toISOString(),
+          createdByName:
+            portalContext?.tenant?.name ||
+            portalContext?.tenantName ||
+            "Tenant"
+        };
+
+      if (!maintenanceMessagesCache[maintenanceId]) {
+        maintenanceMessagesCache[maintenanceId] = [];
+      }
+
+      maintenanceMessagesCache[maintenanceId].push(createdMessage);
+      renderMaintenanceMessages(maintenanceMessagesCache[maintenanceId]);
+
+      input.value = "";
+      setStatus("ok", "Connected");
+      showToast("Message sent successfully.");
+    } catch (error) {
+      console.error(error);
+      setStatus("error", "Service unavailable");
+      showToast(error.message || "Unable to send message.");
+    } finally {
+      isSendingMaintenanceMessage = false;
+      sendBtn.disabled = false;
+      sendBtn.textContent = "Send message";
+    }
+  }
+
+  sendBtn.addEventListener("click", handleSendMessage);
+
+  input.addEventListener("keydown", async (event) => {
+    if (event.key === "Enter" && !event.shiftKey) {
+      event.preventDefault();
+      await handleSendMessage();
+    }
+  });
+}
+
 function initAuthButtons() {
   $("loginBtn")?.addEventListener("click", login);
   $("logoutBtn")?.addEventListener("click", openLogoutModal);
   $("confirmLogoutBtn")?.addEventListener("click", logout);
 
   $("maintenanceCreateBtn")?.addEventListener("click", openMaintenanceModal);
-
 
   document.addEventListener("click", async (event) => {
     const openViewBtn = event.target.closest("[data-open-view]");
@@ -1441,14 +1680,15 @@ async function boot() {
   if (isBooted) return;
   isBooted = true;
 
- initNavigation();
-initMaintenanceFilters();
-initModalControls();
-initMaintenanceForm();
-initProfileForm();
-initAuthButtons();
-initTenancyDetailEditButtons();
-initSidebarControls();
+  initNavigation();
+  initMaintenanceFilters();
+  initModalControls();
+  initMaintenanceForm();
+  initProfileForm();
+  initAuthButtons();
+  initTenancyDetailEditButtons();
+  initSidebarControls();
+  initMaintenanceMessaging();
 
   try {
     requireAuth0Client();
