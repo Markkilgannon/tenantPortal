@@ -434,19 +434,31 @@
       </div>
     </div>
 
-    <div id="maintenanceDetailModal" class="modal hidden" aria-hidden="true">
-      <div class="modal__backdrop" data-close-modal="maintenanceDetailModal"></div>
-      <div class="modal__dialog modal__dialog--wide" role="dialog" aria-modal="true" aria-labelledby="maintenanceDetailTitle">
-        <div class="modal__header">
-          <div>
-            <p class="eyebrow eyebrow--tight">Maintenance</p>
-            <h2 id="maintenanceDetailTitle" class="modal__title">Request details</h2>
-          </div>
-          <button class="icon-btn" data-close-modal="maintenanceDetailModal" type="button" aria-label="Close modal">
-            ✕
-          </button>
-        </div>
+<div id="maintenanceDetailModal" class="modal hidden" aria-hidden="true">
+  <div class="modal__backdrop" data-close-modal="maintenanceDetailModal"></div>
+  <div
+    class="modal__dialog modal__dialog--wide modal__dialog--split"
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="maintenanceDetailTitle"
+  >
+    <div class="modal__header">
+      <div>
+        <p class="eyebrow eyebrow--tight">Maintenance</p>
+        <h2 id="maintenanceDetailTitle" class="modal__title">Request details</h2>
+      </div>
+      <button
+        class="icon-btn"
+        data-close-modal="maintenanceDetailModal"
+        type="button"
+        aria-label="Close modal"
+      >
+        ✕
+      </button>
+    </div>
 
+    <div class="maintenance-detail-layout">
+      <section class="maintenance-detail-main">
         <div class="detail-summary">
           <div class="detail-summary__meta">
             <div class="detail-summary__row">
@@ -456,6 +468,10 @@
             <div class="detail-summary__row">
               <span class="detail-summary__label">Submitted</span>
               <span id="maintenanceDetailSubmitted">—</span>
+            </div>
+            <div class="detail-summary__row">
+              <span class="detail-summary__label">Reference</span>
+              <span id="maintenanceDetailReference">—</span>
             </div>
           </div>
         </div>
@@ -467,21 +483,73 @@
 
         <div class="detail-block">
           <p class="detail-block__label">Latest portal update</p>
-          <p id="maintenanceDetailUpdate" class="detail-block__text">No update available.</p>
+          <p id="maintenanceDetailUpdate" class="detail-block__text">
+            No update available.
+          </p>
         </div>
 
         <div class="detail-block">
           <p class="detail-block__label">Tracking history</p>
           <div id="maintenanceDetailTimeline" class="timeline-list"></div>
         </div>
+      </section>
 
-        <div class="modal__footer">
-          <button class="btn btn--ghost" data-close-modal="maintenanceDetailModal" type="button">
-            Close
-          </button>
+      <aside class="maintenance-detail-chat">
+        <div class="detail-block detail-block--chat">
+          <div class="detail-block__header">
+            <div>
+              <p class="detail-block__label">Messages</p>
+              <p class="detail-block__subtext">Chat with the property team</p>
+            </div>
+          </div>
+
+          <div id="maintenanceMessagesList" class="chat-thread">
+            <div class="chat-empty">
+              No messages yet. Start the conversation with the property team.
+            </div>
+          </div>
+
+          <div class="chat-composer">
+            <label class="field hidden-visually" for="maintenanceMessageInput">
+              Message
+            </label>
+            <textarea
+              id="maintenanceMessageInput"
+              class="input input--textarea chat-composer__input"
+              rows="4"
+              maxlength="1000"
+              placeholder="Write a message..."
+            ></textarea>
+
+            <div id="maintenanceMessageMeta" class="field__help">
+              Press Enter to send. Shift + Enter for a new line.
+            </div>
+
+            <div class="chat-composer__actions">
+              <button
+                id="maintenanceMessageSendBtn"
+                class="btn btn--primary"
+                type="button"
+              >
+                Send message
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
+      </aside>
     </div>
+
+    <div class="modal__footer">
+      <button
+        class="btn btn--ghost"
+        data-close-modal="maintenanceDetailModal"
+        type="button"
+      >
+        Close
+      </button>
+    </div>
+  </div>
+</div>
 
     <div id="logoutModal" class="modal hidden" aria-hidden="true">
       <div class="modal__backdrop" data-close-modal="logoutModal"></div>
