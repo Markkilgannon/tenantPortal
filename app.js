@@ -26,6 +26,7 @@ let toastTimer = null;
 let maintenanceMessagesCache = {};
 let activeMaintenanceItem = null;
 let isSendingMaintenanceMessage = false;
+let maintenanceMessagesPollTimer = null;
 
 /* =========================================================
    03. VIEW META
@@ -219,14 +220,22 @@ function closeAllModals() {
     modal.classList.add("hidden");
     modal.setAttribute("aria-hidden", "true");
   });
+
+  stopMaintenanceMessagesPolling();
   activeModalId = null;
 }
 
 function closeModalById(id) {
   const modal = $(id);
   if (!modal) return;
+
   modal.classList.add("hidden");
   modal.setAttribute("aria-hidden", "true");
+
+  if (id === "maintenanceDetailModal") {
+    stopMaintenanceMessagesPolling();
+  }
+
   if (activeModalId === id) activeModalId = null;
 }
 
@@ -971,16 +980,29 @@ function safeMessageAuthor(item) {
   return isTenant ? "You" : "Property Team";
 }
 
-function renderMaintenanceMessages(items) {
+function renderMaintenanceMessages(items, options = {}) {
   const target = $("maintenanceMessagesList");
   if (!target) return;
+
+  const {
+    forceScroll = false,
+    preserveIfReadingOlder = true
+  } = options;
+
+  const shouldStickToBottom =
+    forceScroll || !preserveIfReadingOlder || isNearBottom(target);
 
   if (!items || items.length === 0) {
     target.innerHTML = `
       <div class="chat-empty">
-        No messages yet. Start the conversation with the property team.
+        No messages yet.<br>
+        Start the conversation with the property team.
       </div>
     `;
+
+    if (shouldStickToBottom) {
+      target.scrollTop = target.scrollHeight;
+    }
     return;
   }
 
@@ -991,11 +1013,13 @@ function renderMaintenanceMessages(items) {
         senderType === "tenant" ||
         item?.isFromPortal === true;
 
+      const isPending = item?.isPending === true;
+
       return `
-        <article class="chat-message ${isTenant ? "chat-message--tenant" : "chat-message--staff"}">
+        <article class="chat-message ${isTenant ? "chat-message--tenant" : "chat-message--staff"} ${isPending ? "chat-message--pending" : ""}">
           <div class="chat-message__meta">
             <span class="chat-message__author">${escapeHtml(safeMessageAuthor(item))}</span>
-            <span>${escapeHtml(safeDateTime(item?.createdDate))}</span>
+            <span>${escapeHtml(isPending ? "Sending..." : safeDateTime(item?.createdDate))}</span>
           </div>
           <p class="chat-message__body">${escapeHtml(safeText(item?.message, ""))}</p>
         </article>
@@ -1003,7 +1027,64 @@ function renderMaintenanceMessages(items) {
     })
     .join("");
 
-  target.scrollTop = target.scrollHeight;
+  if (shouldStickToBottom) {
+    target.scrollTop = target.scrollHeight;
+  }
+}
+/* =========================================================
+   18B. MESSAGING HELPERS (PHASE 2)
+   ========================================================= */
+
+function getMaintenanceMessagesListEl() {
+  return $("maintenanceMessagesList");
+}
+
+function isNearBottom(el, threshold = 72) {
+  if (!el) return true;
+  return el.scrollHeight - el.scrollTop - el.clientHeight <= threshold;
+}
+
+function stopMaintenanceMessagesPolling() {
+  if (maintenanceMessagesPollTimer) {
+    clearInterval(maintenanceMessagesPollTimer);
+    maintenanceMessagesPollTimer = null;
+  }
+}
+
+function isMaintenanceDetailModalOpen() {
+  const modal = $("maintenanceDetailModal");
+  return !!modal && !modal.classList.contains("hidden");
+}
+
+async function refreshMaintenanceMessages(options = {}) {
+  const id = activeMaintenanceItem?.id || activeMaintenanceItem?.maintenanceId;
+  if (!id) return;
+
+  try {
+    const latest = await loadMaintenanceMessages(id);
+    maintenanceMessagesCache[id] = latest || [];
+    renderMaintenanceMessages(maintenanceMessagesCache[id], options);
+  } catch (error) {
+    console.error("Failed to refresh messages", error);
+  }
+}
+
+function startMaintenanceMessagesPolling() {
+  stopMaintenanceMessagesPolling();
+
+  maintenanceMessagesPollTimer = setInterval(async () => {
+    if (!isMaintenanceDetailModalOpen()) {
+      stopMaintenanceMessagesPolling();
+      return;
+    }
+
+    if (isSendingMaintenanceMessage) return;
+
+    await refreshMaintenanceMessages({
+      forceScroll: false,
+      preserveIfReadingOlder: true
+    });
+  }, 12000);
 }
 
 /* =========================================================
@@ -1258,6 +1339,7 @@ async function openMaintenanceDetail(item) {
 
   const historyToggle = $("maintenanceHistoryToggle");
   const historyPanel = $("maintenanceHistoryPanel");
+   stopMaintenanceMessagesPolling();
 
   if (historyToggle) {
     historyToggle.setAttribute("aria-expanded", "false");
@@ -1306,7 +1388,7 @@ async function openMaintenanceDetail(item) {
   }
 
   renderMaintenanceTimeline([]);
-  renderMaintenanceMessages([]);
+   renderMaintenanceMessages([], { forceScroll: true, preserveIfReadingOlder: false });
 
   if ($("maintenanceMessageInput")) {
     $("maintenanceMessageInput").value = "";
@@ -1366,16 +1448,26 @@ async function openMaintenanceDetail(item) {
     }
 
     renderMaintenanceTimeline(detail.timeline || []);
-    renderMaintenanceMessages(messages || []);
+    maintenanceMessagesCache[id] = messages || [];
+
+renderMaintenanceMessages(maintenanceMessagesCache[id], {
+  forceScroll: true,
+  preserveIfReadingOlder: false
+});
+
+startMaintenanceMessagesPolling();
     setStatus("ok", "Connected");
-  } catch (error) {
+    } catch (error) {
     console.error(error);
+    stopMaintenanceMessagesPolling();
     renderMaintenanceTimeline([]);
-    renderMaintenanceMessages([]);
+    renderMaintenanceMessages([], {
+      forceScroll: true,
+      preserveIfReadingOlder: false
+    });
     setStatus("error", "Service unavailable");
     showToast(error.message || "Unable to load maintenance details.");
   }
-}
 
 function initMaintenanceHistoryAccordion() {
   const toggle = $("maintenanceHistoryToggle");
@@ -1617,50 +1709,63 @@ function initMaintenanceMessaging() {
       return;
     }
 
-    if (message.length > 1000) {
-      showToast("Messages must be 1000 characters or less.");
-      return;
-    }
+    const existing = maintenanceMessagesCache[maintenanceId] || [];
+
+    const pendingMessage = {
+      id: `pending-${Date.now()}`,
+      message,
+      senderType: "Tenant",
+      isFromPortal: true,
+      createdDate: new Date().toISOString(),
+      isPending: true
+    };
 
     isSendingMaintenanceMessage = true;
     sendBtn.disabled = true;
     sendBtn.textContent = "Sending...";
     setStatus("loading", "Sending message");
 
+    input.value = "";
+
+    maintenanceMessagesCache[maintenanceId] = [...existing, pendingMessage];
+
+    renderMaintenanceMessages(maintenanceMessagesCache[maintenanceId], {
+      forceScroll: true,
+      preserveIfReadingOlder: false
+    });
+
     try {
-      const response = await sendMaintenanceMessage(maintenanceId, message);
+      await sendMaintenanceMessage(maintenanceId, message);
 
-      const createdMessage =
-        response?.messageRecord ||
-        {
-          message,
-          senderType: "Tenant",
-          isFromPortal: true,
-          createdDate: new Date().toISOString(),
-          createdByName:
-            portalContext?.tenant?.name ||
-            portalContext?.tenantName ||
-            "Tenant"
-        };
+      const latest = await loadMaintenanceMessages(maintenanceId);
 
-      if (!maintenanceMessagesCache[maintenanceId]) {
-        maintenanceMessagesCache[maintenanceId] = [];
-      }
+      maintenanceMessagesCache[maintenanceId] = latest || [];
 
-      maintenanceMessagesCache[maintenanceId].push(createdMessage);
-      renderMaintenanceMessages(maintenanceMessagesCache[maintenanceId]);
+      renderMaintenanceMessages(maintenanceMessagesCache[maintenanceId], {
+        forceScroll: true,
+        preserveIfReadingOlder: false
+      });
 
-      input.value = "";
       setStatus("ok", "Connected");
       showToast("Message sent successfully.");
     } catch (error) {
       console.error(error);
+
+      maintenanceMessagesCache[maintenanceId] = existing;
+
+      renderMaintenanceMessages(existing, {
+        forceScroll: true,
+        preserveIfReadingOlder: false
+      });
+
+      input.value = message;
+
       setStatus("error", "Service unavailable");
       showToast(error.message || "Unable to send message.");
     } finally {
       isSendingMaintenanceMessage = false;
       sendBtn.disabled = false;
-      sendBtn.textContent = "Send message";
+      sendBtn.textContent = "Send";
     }
   }
 
