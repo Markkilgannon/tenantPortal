@@ -459,45 +459,57 @@
       </button>
     </div>
 
-    <div class="request-summary-card">
-      <div class="request-summary-grid">
-        <div class="request-summary-item">
+    <div class="request-summary-card request-summary-card--simple">
+      <div class="request-summary-simple">
+        <div class="request-summary-simple__item request-summary-simple__item--status">
           <span class="request-summary-item__label">Status</span>
           <div id="maintenanceDetailStatus"></div>
         </div>
 
-        <div class="request-summary-item">
-          <span class="request-summary-item__label">Submitted</span>
-          <span id="maintenanceDetailSubmitted">—</span>
-        </div>
-
-        <div class="request-summary-item">
-          <span class="request-summary-item__label">Reference</span>
-          <span id="maintenanceDetailReference">—</span>
+        <div class="request-summary-simple__item">
+          <span class="request-summary-item__label">Description</span>
+          <p id="maintenanceDetailDescription" class="detail-block__text">—</p>
         </div>
       </div>
     </div>
 
-    <div class="request-description-card">
-      <p class="detail-block__label">Description</p>
-      <p id="maintenanceDetailDescription" class="detail-block__text">—</p>
-    </div>
+    <section class="request-history-strip">
+      <button
+        id="maintenanceHistoryToggle"
+        class="history-toggle history-toggle--clean"
+        type="button"
+        aria-expanded="false"
+        aria-controls="maintenanceHistoryPanel"
+      >
+        <span class="history-toggle__left">
+          <span class="history-toggle__chevron">▸</span>
+          <span>View tracking history</span>
+        </span>
+        <span id="maintenanceHistoryCount" class="history-toggle__count">0 updates</span>
+      </button>
 
-    <section class="request-chat-card">
-      <div class="request-chat-card__header">
+      <div id="maintenanceHistoryPanel" class="history-panel hidden">
+        <div id="maintenanceDetailTimeline" class="timeline-list timeline-list--history"></div>
+      </div>
+    </section>
+
+    <section class="request-chat-card request-chat-card--clean">
+      <div class="request-chat-card__header request-chat-card__header--tight">
         <div>
           <p class="detail-block__label">Messages</p>
-          <p class="detail-block__subtext">Chat with the property team</p>
+          <p class="detail-block__subtext detail-block__subtext--tight">
+            Chat with the property team
+          </p>
         </div>
       </div>
 
-      <div id="maintenanceMessagesList" class="chat-thread">
+      <div id="maintenanceMessagesList" class="chat-thread chat-thread--clean">
         <div class="chat-empty">
           No messages yet. Start the conversation with the property team.
         </div>
       </div>
 
-      <div class="chat-composer">
+      <div class="chat-composer chat-composer--clean">
         <label class="hidden-visually" for="maintenanceMessageInput">Message</label>
         <textarea
           id="maintenanceMessageInput"
@@ -521,39 +533,7 @@
       </p>
     </section>
 
-    <section class="request-history-card">
-      <button
-        id="maintenanceHistoryToggle"
-        class="history-toggle"
-        type="button"
-        aria-expanded="false"
-        aria-controls="maintenanceHistoryPanel"
-      >
-        <span>View full tracking history</span>
-        <span id="maintenanceHistoryCount" class="history-toggle__count">0 updates</span>
-      </button>
-
-      <div
-        id="maintenanceHistoryPanel"
-        class="history-panel hidden"
-      >
-        <div id="maintenanceDetailTimeline" class="timeline-list timeline-list--history"></div>
-      </div>
-    </section>
-
-    <div class="modal__footer">
-      <button
-        class="btn btn--ghost"
-        data-close-modal="maintenanceDetailModal"
-        type="button"
-      >
-        Close
-      </button>
-    </div>
-  </div>
-</div>
-
-    <div class="modal__footer">
+    <div class="modal__footer modal__footer--request">
       <button
         class="btn btn--ghost"
         data-close-modal="maintenanceDetailModal"
