@@ -159,9 +159,10 @@ button {
   display: block;
 }
 
-.app-shell.sidebar-collapsed .sidebar {
+.app-shell.sidebar-collapsed .sidebar,
+.sidebar.is-collapsed {
   width: var(--sidebar-collapsed-width);
-  flex-basis: var(--sidebar-collapsed-width);
+  flex: 0 0 var(--sidebar-collapsed-width);
 }
 
 @keyframes sectionFadeIn {
@@ -234,6 +235,11 @@ button {
   flex-shrink: 0;
 }
 
+.brand-lockup__copy {
+  min-width: 0;
+  overflow: hidden;
+}
+
 /* =========================================================
    06. SIDEBAR
    ========================================================= */
@@ -282,41 +288,64 @@ button {
 }
 
 .sidebar.is-collapsed {
-  padding-inline: 14px;
-}
-
-.sidebar.is-collapsed .brand-lockup__copy,
-.sidebar.is-collapsed .nav__label,
-.sidebar.is-collapsed .tenant-mini__meta {
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
+  padding-inline: 12px;
+  align-items: stretch;
 }
 
 .sidebar.is-collapsed .sidebar__header {
   justify-content: center;
 }
 
-.sidebar.is-collapsed .nav {
-  justify-items: center;
+.sidebar.is-collapsed .brand-lockup {
+  justify-content: center;
 }
 
-.sidebar.is-collapsed .sidebar__footer {
-  justify-items: center;
+.sidebar.is-collapsed .brand-lockup__copy,
+.sidebar.is-collapsed .nav__label,
+.sidebar.is-collapsed .tenant-mini__meta,
+.sidebar.is-collapsed .btn__label {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  width: 0;
+  max-width: 0;
+  overflow: hidden;
+}
+
+.sidebar.is-collapsed .nav {
+  justify-items: stretch;
+}
+
+.sidebar.is-collapsed .nav__item {
+  min-height: 52px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+}
+
+.sidebar.is-collapsed .nav__item.is-active::before {
+  left: 50%;
+  top: auto;
+  bottom: 4px;
+  width: 22px;
+  height: 3px;
+  transform: translateX(-50%);
 }
 
 .sidebar.is-collapsed .tenant-mini {
-  width: 100%;
   justify-content: center;
-  padding-inline: 10px;
+  padding: 12px;
 }
 
-.sidebar.is-collapsed .btn--block {
-  padding-inline: 0;
+.sidebar.is-collapsed .avatar,
+.sidebar.is-collapsed .brand-lockup__mark {
+  margin-inline: auto;
 }
 
-.sidebar.is-collapsed .btn--block .btn__label {
-  display: none;
+.brand-lockup__copy {
+  min-width: 0;
+  overflow: hidden;
 }
 
 /* =========================================================
@@ -337,9 +366,16 @@ button {
   border-radius: 16px;
   text-align: left;
   position: relative;
+  overflow: hidden;
   transition: background var(--transition), border-color var(--transition),
     color var(--transition), transform var(--transition), box-shadow var(--transition);
 }
+
+.nav__item {
+  overflow: hidden;
+}
+
+
 
 .nav__item:hover {
   background: rgba(255, 255, 255, 0.9);
