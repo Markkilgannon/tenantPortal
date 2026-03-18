@@ -978,23 +978,24 @@ async function sendMaintenanceMessage(maintenanceId, message) {
 
 async function openMaintenanceDetail(item) {
   const id = item?.id || item?.maintenanceId;
-  const historyToggle = $("maintenanceHistoryToggle");
-const historyPanel = $("maintenanceHistoryPanel");
 
-if (historyToggle) {
-  historyToggle.setAttribute("aria-expanded", "false");
-}
-if (historyPanel) {
-  historyPanel.classList.add("hidden");
-}
-if ($("maintenanceHistoryCount")) {
-  $("maintenanceHistoryCount").textContent = "0 updates";
-}
-if ($("maintenanceDetailMeta")) {
-  $("maintenanceDetailMeta").textContent = detail.createdDate
-    ? `Submitted ${safeDateTime(detail.createdDate)}`
-    : "—";
-}
+  const historyToggle = $("maintenanceHistoryToggle");
+  const historyPanel = $("maintenanceHistoryPanel");
+
+  if (historyToggle) {
+    historyToggle.setAttribute("aria-expanded", "false");
+  }
+  if (historyPanel) {
+    historyPanel.classList.add("hidden");
+  }
+  if ($("maintenanceHistoryCount")) {
+    $("maintenanceHistoryCount").textContent = "0 updates";
+  }
+  if ($("maintenanceDetailMeta")) {
+    $("maintenanceDetailMeta").textContent = item?.createdDate
+      ? `Submitted ${safeDateTime(item.createdDate)}`
+      : "—";
+  }
 
   if (!id) {
     showToast("Unable to open this maintenance request.");
@@ -1003,14 +1004,14 @@ if ($("maintenanceDetailMeta")) {
 
   activeMaintenanceItem = item;
 
-if ($("maintenanceDetailTitle")) {
-  $("maintenanceDetailTitle").textContent = safeText(
-    detail.referenceNumber
-      ? `${detail.referenceNumber} · ${detail.subject || "Request details"}`
-      : detail.subject,
-    "Request details"
-  );
-}
+  if ($("maintenanceDetailTitle")) {
+    $("maintenanceDetailTitle").textContent = safeText(
+      item.referenceNumber
+        ? `${item.referenceNumber} · ${item.subject || "Request details"}`
+        : item.subject,
+      "Request details"
+    );
+  }
 
   if ($("maintenanceDetailStatus")) {
     $("maintenanceDetailStatus").innerHTML = `
@@ -1020,10 +1021,6 @@ if ($("maintenanceDetailTitle")) {
     `;
   }
 
-  if ($("maintenanceDetailSubmitted")) {
-    $("maintenanceDetailSubmitted").textContent = safeDateTime(item.createdDate);
-  }
-
   if ($("maintenanceDetailDescription")) {
     $("maintenanceDetailDescription").textContent = safeText(
       item.description,
@@ -1031,15 +1028,12 @@ if ($("maintenanceDetailTitle")) {
     );
   }
 
-  if ($("maintenanceDetailReference")) {
-    $("maintenanceDetailReference").textContent = safeText(
-      item.referenceNumber || item.name || "—"
-    );
-  }
-
   renderMaintenanceTimeline([]);
   renderMaintenanceMessages([]);
-  if ($("maintenanceMessageInput")) $("maintenanceMessageInput").value = "";
+
+  if ($("maintenanceMessageInput")) {
+    $("maintenanceMessageInput").value = "";
+  }
 
   openModal("maintenanceDetailModal");
   setStatus("loading", "Loading request details");
@@ -1067,16 +1061,18 @@ if ($("maintenanceDetailTitle")) {
       );
     }
 
+    if ($("maintenanceDetailMeta")) {
+      $("maintenanceDetailMeta").textContent = detail.createdDate
+        ? `Submitted ${safeDateTime(detail.createdDate)}`
+        : "—";
+    }
+
     if ($("maintenanceDetailStatus")) {
       $("maintenanceDetailStatus").innerHTML = `
         <span class="badge ${normaliseStatusClass(detail.status)}">${escapeHtml(
           safeText(detail.status, "Unknown")
         )}</span>
       `;
-    }
-
-    if ($("maintenanceDetailSubmitted")) {
-      $("maintenanceDetailSubmitted").textContent = safeDateTime(detail.createdDate);
     }
 
     if ($("maintenanceDetailDescription")) {
@@ -1086,43 +1082,23 @@ if ($("maintenanceDetailTitle")) {
       );
     }
 
-
-    if ($("maintenanceDetailReference")) {
-      $("maintenanceDetailReference").textContent = safeText(
-        detail.referenceNumber || detail.name || "—"
-      );
-    }
-
     if ($("maintenanceHistoryCount")) {
-  const updateCount = Array.isArray(detail.timeline) ? detail.timeline.length : 0;
-  $("maintenanceHistoryCount").textContent =
-    `${updateCount} ${updateCount === 1 ? "update" : "updates"}`;
-}
-
-if ($("maintenanceDetailMeta")) {
-  const metaParts = [
-    detail.referenceNumber || detail.name || null,
-    detail.createdDate ? `Submitted ${safeDateTime(detail.createdDate)}` : null
-  ].filter(Boolean);
-
-  $("maintenanceDetailMeta").textContent = metaParts.join(" • ") || "—";
-}
+      const updateCount = Array.isArray(detail.timeline) ? detail.timeline.length : 0;
+      $("maintenanceHistoryCount").textContent =
+        `${updateCount} ${updateCount === 1 ? "update" : "updates"}`;
+    }
 
     renderMaintenanceTimeline(detail.timeline || []);
     renderMaintenanceMessages(messages || []);
     setStatus("ok", "Connected");
   } catch (error) {
     console.error(error);
-    if ($("maintenanceDetailUpdate")) {
-      $("maintenanceDetailUpdate").textContent = "Unable to load the latest update.";
-    }
     renderMaintenanceTimeline([]);
     renderMaintenanceMessages([]);
     setStatus("error", "Service unavailable");
     showToast(error.message || "Unable to load maintenance details.");
   }
 }
-
 function openMaintenanceModal() {
   $("maintenanceForm").reset();
   $("photoSelectionList").innerHTML = "";
