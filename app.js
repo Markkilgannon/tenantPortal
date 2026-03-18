@@ -1,3 +1,7 @@
+/* =========================================================
+   01. AUTH / APP CONFIG
+   ========================================================= */
+
 const AUTH0_DOMAIN = "dev-v3g60bdgfjg7walx.us.auth0.com";
 const AUTH0_CLIENT_ID = "CXrASdTRNQKhDuJIFNvIR7wPwjAwjtCx";
 const AUTH0_AUDIENCE = "https://tenant-portal-api";
@@ -5,6 +9,10 @@ const AUTH0_AUDIENCE = "https://tenant-portal-api";
 const LAST_VIEW_KEY = "tenant-portal:last-view";
 const MAX_FILES = 5;
 const MAX_FILE_SIZE_BYTES = 2 * 1024 * 1024;
+
+/* =========================================================
+   02. APP STATE
+   ========================================================= */
 
 let auth0Client = null;
 let isBooted = false;
@@ -19,6 +27,10 @@ let maintenanceMessagesCache = {};
 let activeMaintenanceItem = null;
 let isSendingMaintenanceMessage = false;
 
+/* =========================================================
+   03. VIEW META
+   ========================================================= */
+
 const pageMeta = {
   home: { title: "Home" },
   maintenance: { title: "Maintenance" },
@@ -26,6 +38,10 @@ const pageMeta = {
   announcements: { title: "Announcements" },
   profile: { title: "Profile" }
 };
+
+/* =========================================================
+   04. BASIC HELPERS / FORMATTERS
+   ========================================================= */
 
 function $(id) {
   return document.getElementById(id);
@@ -76,6 +92,10 @@ function getInitials(name) {
   return parts.map((p) => p[0]?.toUpperCase() || "").join("") || "TP";
 }
 
+/* =========================================================
+   05. LOCAL STORAGE
+   ========================================================= */
+
 function getSavedView() {
   return localStorage.getItem(LAST_VIEW_KEY) || "home";
 }
@@ -83,6 +103,10 @@ function getSavedView() {
 function saveView(viewName) {
   localStorage.setItem(LAST_VIEW_KEY, viewName);
 }
+
+/* =========================================================
+   06. GLOBAL UI FEEDBACK
+   ========================================================= */
 
 function setStatus(state, text) {
   const dot = $("globalStatusDot");
@@ -141,6 +165,10 @@ function setMaintenanceMessage(type, text) {
   setFormMessage("maintenanceMsg", type, text);
 }
 
+/* =========================================================
+   07. SIDEBAR CONTROLS
+   ========================================================= */
+
 function openSidebar() {
   const sidebar = $("sidebar");
   const overlay = $("mobileSidebarOverlay");
@@ -182,6 +210,10 @@ function initSidebarControls() {
   });
 }
 
+/* =========================================================
+   08. MODAL CONTROLS
+   ========================================================= */
+
 function closeAllModals() {
   document.querySelectorAll(".modal").forEach((modal) => {
     modal.classList.add("hidden");
@@ -206,6 +238,32 @@ function openModal(id) {
   modal.setAttribute("aria-hidden", "false");
   activeModalId = id;
 }
+
+function openMaintenanceModal() {
+  $("maintenanceForm").reset();
+  $("photoSelectionList").innerHTML = "";
+  $("photoSelectionMeta").textContent =
+    "You can upload up to 5 images, maximum 2MB each.";
+  setMaintenanceMessage("", "");
+  openModal("maintenanceModal");
+  setTimeout(() => $("subject")?.focus(), 50);
+}
+
+function openLogoutModal() {
+  openModal("logoutModal");
+}
+
+function initModalControls() {
+  document.querySelectorAll("[data-close-modal]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      closeModalById(btn.dataset.closeModal);
+    });
+  });
+}
+
+/* =========================================================
+   09. STATUS / BADGE / ANNOUNCEMENT HELPERS
+   ========================================================= */
 
 function normaliseStatusClass(status) {
   const key = String(status || "").trim().toLowerCase();
@@ -233,6 +291,10 @@ function announcementBadgeClass(priority) {
   if (value === "high") return "badge badge--high";
   return "badge badge--default";
 }
+
+/* =========================================================
+   10. SKELETONS / EMPTY STATES
+   ========================================================= */
 
 function renderSkeletonList(targetId, count = 3) {
   const target = $(targetId);
@@ -286,6 +348,10 @@ function renderEmptyState({
   `;
 }
 
+/* =========================================================
+   11. VIEW / PAGE STATE
+   ========================================================= */
+
 function updateTopbarMeta(viewName) {
   const meta = pageMeta[viewName] || pageMeta.home;
   if ($("pageTitle")) $("pageTitle").textContent = meta.title;
@@ -329,6 +395,10 @@ async function openViewAndLoad(viewName) {
     updateDashboardMetrics();
   }
 }
+
+/* =========================================================
+   12. TENANT / PROFILE SHELL HYDRATION
+   ========================================================= */
 
 function applyTenantProfileToShell(data) {
   const ctx = data || {};
@@ -387,6 +457,27 @@ function applyTenantProfileToShell(data) {
   if ($("detailUnit")) $("detailUnit").textContent = unit;
   if ($("detailLease")) $("detailLease").textContent = lease;
 }
+
+function hydrateProfileForm() {
+  const email =
+    portalContext?.tenant?.email ||
+    portalContext?.email ||
+    portalContext?.personEmail ||
+    "";
+
+  const phone =
+    portalContext?.tenant?.phone ||
+    portalContext?.phone ||
+    portalContext?.personMobilePhone ||
+    "";
+
+  if ($("profileEmail")) $("profileEmail").value = email;
+  if ($("profilePhone")) $("profilePhone").value = phone;
+}
+
+/* =========================================================
+   13. DASHBOARD / HOME RENDERING
+   ========================================================= */
 
 function updateDashboardMetrics() {
   const openItems = maintenanceItemsCache.filter((item) => {
@@ -567,6 +658,10 @@ function renderHomeCallout() {
   `;
 }
 
+/* =========================================================
+   14. MAINTENANCE LIST RENDERING / FILTERING
+   ========================================================= */
+
 function renderMaintenanceItems(items, targetId, options = {}) {
   const target = $(targetId);
   if (!target) return;
@@ -641,6 +736,10 @@ function renderFilteredMaintenance() {
   });
 }
 
+/* =========================================================
+   15. ANNOUNCEMENTS RENDERING
+   ========================================================= */
+
 function renderAnnouncements(items, targetId, options = {}) {
   const target = $(targetId);
   if (!target) return;
@@ -688,6 +787,10 @@ function renderAnnouncements(items, targetId, options = {}) {
     })
     .join("");
 }
+
+/* =========================================================
+   16. DOCUMENTS GROUPING / RENDERING / DOWNLOAD
+   ========================================================= */
 
 function groupDocuments(items) {
   const groups = {
@@ -783,22 +886,40 @@ function renderDocuments(items) {
   target.innerHTML = sections;
 }
 
-function hydrateProfileForm() {
-  const email =
-    portalContext?.tenant?.email ||
-    portalContext?.email ||
-    portalContext?.personEmail ||
-    "";
+async function downloadDocument(doc) {
+  const contentDocumentId = doc.contentDocumentId || doc.id;
+  if (!contentDocumentId) {
+    throw new Error("Document ID was not available for download.");
+  }
 
-  const phone =
-    portalContext?.tenant?.phone ||
-    portalContext?.phone ||
-    portalContext?.personMobilePhone ||
-    "";
+  setStatus("loading", "Preparing download");
+  const url = `/api/docs/download?id=${encodeURIComponent(contentDocumentId)}`;
+  const response = await fetch(url, {
+    headers: {
+      Authorization: `Bearer ${await getAccessToken()}`
+    }
+  });
 
-  if ($("profileEmail")) $("profileEmail").value = email;
-  if ($("profilePhone")) $("profilePhone").value = phone;
+  if (!response.ok) {
+    throw new Error(`Download failed with status ${response.status}`);
+  }
+
+  const blob = await response.blob();
+  const objectUrl = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = objectUrl;
+  a.download = doc.title || doc.name || "document";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(objectUrl);
+  setStatus("ok", "Connected");
+  showToast("Document download started.");
 }
+
+/* =========================================================
+   17. GENERIC TIMELINE RENDERING
+   ========================================================= */
 
 function renderMaintenanceTimeline(items) {
   const target = $("maintenanceDetailTimeline");
@@ -840,6 +961,10 @@ function renderMaintenanceTimeline(items) {
     .join("");
 }
 
+/* =========================================================
+   18. MAINTENANCE MESSAGES / CHAT RENDERING
+   ========================================================= */
+
 function safeMessageAuthor(item) {
   const senderType = String(item?.senderType || "").trim().toLowerCase();
   const isTenant = senderType === "tenant" || item?.isFromPortal === true;
@@ -880,6 +1005,154 @@ function renderMaintenanceMessages(items) {
 
   target.scrollTop = target.scrollHeight;
 }
+
+/* =========================================================
+   19. AUTH0 CLIENT / AUTH FLOW
+   ========================================================= */
+
+function requireAuth0Client() {
+  if (!window.auth0) {
+    throw new Error("Auth0 library is not available.");
+  }
+  if (!auth0Client) {
+    auth0Client = new window.auth0.Auth0Client({
+      domain: AUTH0_DOMAIN,
+      clientId: AUTH0_CLIENT_ID,
+      authorizationParams: {
+        audience: AUTH0_AUDIENCE,
+        redirect_uri: window.location.origin
+      },
+      cacheLocation: "memory",
+      useRefreshTokens: false
+    });
+  }
+  return auth0Client;
+}
+
+async function handleAuthRedirectIfPresent() {
+  const client = requireAuth0Client();
+  const query = window.location.search;
+  if (query.includes("code=") && query.includes("state=")) {
+    await client.handleRedirectCallback();
+    window.history.replaceState({}, document.title, window.location.pathname);
+  }
+}
+
+async function login() {
+  const client = requireAuth0Client();
+  await client.loginWithRedirect({
+    authorizationParams: {
+      audience: AUTH0_AUDIENCE,
+      redirect_uri: window.location.origin
+    }
+  });
+}
+
+async function logout() {
+  const client = requireAuth0Client();
+  closeAllModals();
+  await client.logout({
+    logoutParams: {
+      returnTo: window.location.origin
+    }
+  });
+}
+
+async function isAuthenticated() {
+  const client = requireAuth0Client();
+  return client.isAuthenticated();
+}
+
+async function getAccessToken() {
+  const client = requireAuth0Client();
+  return client.getTokenSilently({
+    authorizationParams: { audience: AUTH0_AUDIENCE }
+  });
+}
+
+/* =========================================================
+   20. GENERIC API HELPER
+   ========================================================= */
+
+async function api(path, opts = {}) {
+  const token = await getAccessToken();
+  const headers = new Headers(opts.headers || {});
+  headers.set("Authorization", `Bearer ${token}`);
+
+  if (!(opts.body instanceof FormData) && !headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  const response = await fetch(path, {
+    ...opts,
+    headers
+  });
+
+  if (!response.ok) {
+    let message = `Request failed with status ${response.status}`;
+    try {
+      const payload = await response.json();
+      message = payload?.message || payload?.error || message;
+    } catch {
+      const text = await response.text();
+      if (text) message = text;
+    }
+    throw new Error(message);
+  }
+
+  const contentType = response.headers.get("content-type") || "";
+  if (contentType.includes("application/json")) {
+    return response.json();
+  }
+  return response.blob();
+}
+
+/* =========================================================
+   21. PORTAL DATA LOADERS
+   ========================================================= */
+
+async function loadMe() {
+  setStatus("loading", "Loading tenancy");
+
+  const data = await api("/api/me");
+  const context = data?.sf || {};
+
+  applyTenantProfileToShell(context);
+  hydrateProfileForm();
+
+  setStatus("ok", "Connected");
+}
+
+async function loadMaintenance(skipStatusMessage = false) {
+  if (!skipStatusMessage) setStatus("loading", "Loading maintenance");
+  const data = await api("/api/maintenance");
+  maintenanceItemsCache = Array.isArray(data) ? data : data?.items || [];
+  renderFilteredMaintenance();
+  if (!skipStatusMessage) setStatus("ok", "Connected");
+  updateDashboardMetrics();
+}
+
+async function loadDocuments(skipStatusMessage = false) {
+  if (!skipStatusMessage) setStatus("loading", "Loading documents");
+  const data = await api("/api/docs");
+  documentsCache = Array.isArray(data) ? data : data?.items || [];
+  renderDocuments(documentsCache);
+  if (!skipStatusMessage) setStatus("ok", "Connected");
+  updateDashboardMetrics();
+}
+
+async function loadAnnouncementsAndRender(skipStatusMessage = false) {
+  if (!skipStatusMessage) setStatus("loading", "Loading announcements");
+  const data = await api("/api/announcements");
+  announcementsCache = Array.isArray(data) ? data : data?.items || [];
+  renderAnnouncements(announcementsCache, "announcementsList");
+  if (!skipStatusMessage) setStatus("ok", "Connected");
+  updateDashboardMetrics();
+}
+
+/* =========================================================
+   22. MAINTENANCE DETAIL / MESSAGE API CALLS
+   ========================================================= */
 
 async function loadMaintenanceDetail(id) {
   if (!id) {
@@ -975,6 +1248,10 @@ async function sendMaintenanceMessage(maintenanceId, message) {
 
   return data;
 }
+
+/* =========================================================
+   23. MAINTENANCE DETAIL MODAL FLOW
+   ========================================================= */
 
 async function openMaintenanceDetail(item) {
   const id = item?.id || item?.maintenanceId;
@@ -1099,15 +1376,6 @@ async function openMaintenanceDetail(item) {
     showToast(error.message || "Unable to load maintenance details.");
   }
 }
-function openMaintenanceModal() {
-  $("maintenanceForm").reset();
-  $("photoSelectionList").innerHTML = "";
-  $("photoSelectionMeta").textContent =
-    "You can upload up to 5 images, maximum 2MB each.";
-  setMaintenanceMessage("", "");
-  openModal("maintenanceModal");
-  setTimeout(() => $("subject")?.focus(), 50);
-}
 
 function initMaintenanceHistoryAccordion() {
   const toggle = $("maintenanceHistoryToggle");
@@ -1122,200 +1390,9 @@ function initMaintenanceHistoryAccordion() {
   });
 }
 
-function openLogoutModal() {
-  openModal("logoutModal");
-}
-
-function initNavigation() {
-  document.querySelectorAll(".nav__item").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      openViewAndLoad(btn.dataset.view);
-    });
-  });
-
-  document.querySelectorAll("[data-open-view]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      openViewAndLoad(btn.dataset.openView);
-    });
-  });
-}
-
-function initMaintenanceFilters() {
-  document.querySelectorAll("[data-maintenance-filter]").forEach((chip) => {
-    chip.addEventListener("click", () => {
-      maintenanceFilter = chip.dataset.maintenanceFilter || "all";
-
-      document.querySelectorAll("[data-maintenance-filter]").forEach((c) => {
-        c.classList.toggle("is-active", c === chip);
-      });
-
-      renderFilteredMaintenance();
-    });
-  });
-}
-
-function requireAuth0Client() {
-  if (!window.auth0) {
-    throw new Error("Auth0 library is not available.");
-  }
-  if (!auth0Client) {
-    auth0Client = new window.auth0.Auth0Client({
-      domain: AUTH0_DOMAIN,
-      clientId: AUTH0_CLIENT_ID,
-      authorizationParams: {
-        audience: AUTH0_AUDIENCE,
-        redirect_uri: window.location.origin
-      },
-      cacheLocation: "memory",
-      useRefreshTokens: false
-    });
-  }
-  return auth0Client;
-}
-
-async function handleAuthRedirectIfPresent() {
-  const client = requireAuth0Client();
-  const query = window.location.search;
-  if (query.includes("code=") && query.includes("state=")) {
-    await client.handleRedirectCallback();
-    window.history.replaceState({}, document.title, window.location.pathname);
-  }
-}
-
-async function login() {
-  const client = requireAuth0Client();
-  await client.loginWithRedirect({
-    authorizationParams: {
-      audience: AUTH0_AUDIENCE,
-      redirect_uri: window.location.origin
-    }
-  });
-}
-
-async function logout() {
-  const client = requireAuth0Client();
-  closeAllModals();
-  await client.logout({
-    logoutParams: {
-      returnTo: window.location.origin
-    }
-  });
-}
-
-async function isAuthenticated() {
-  const client = requireAuth0Client();
-  return client.isAuthenticated();
-}
-
-async function getAccessToken() {
-  const client = requireAuth0Client();
-  return client.getTokenSilently({
-    authorizationParams: { audience: AUTH0_AUDIENCE }
-  });
-}
-
-async function api(path, opts = {}) {
-  const token = await getAccessToken();
-  const headers = new Headers(opts.headers || {});
-  headers.set("Authorization", `Bearer ${token}`);
-
-  if (!(opts.body instanceof FormData) && !headers.has("Content-Type")) {
-    headers.set("Content-Type", "application/json");
-  }
-
-  const response = await fetch(path, {
-    ...opts,
-    headers
-  });
-
-  if (!response.ok) {
-    let message = `Request failed with status ${response.status}`;
-    try {
-      const payload = await response.json();
-      message = payload?.message || payload?.error || message;
-    } catch {
-      const text = await response.text();
-      if (text) message = text;
-    }
-    throw new Error(message);
-  }
-
-  const contentType = response.headers.get("content-type") || "";
-  if (contentType.includes("application/json")) {
-    return response.json();
-  }
-  return response.blob();
-}
-
-async function loadMe() {
-  setStatus("loading", "Loading tenancy");
-
-  const data = await api("/api/me");
-  const context = data?.sf || {};
-
-  applyTenantProfileToShell(context);
-  hydrateProfileForm();
-
-  setStatus("ok", "Connected");
-}
-
-async function loadMaintenance(skipStatusMessage = false) {
-  if (!skipStatusMessage) setStatus("loading", "Loading maintenance");
-  const data = await api("/api/maintenance");
-  maintenanceItemsCache = Array.isArray(data) ? data : data?.items || [];
-  renderFilteredMaintenance();
-  if (!skipStatusMessage) setStatus("ok", "Connected");
-  updateDashboardMetrics();
-}
-
-async function loadDocuments(skipStatusMessage = false) {
-  if (!skipStatusMessage) setStatus("loading", "Loading documents");
-  const data = await api("/api/docs");
-  documentsCache = Array.isArray(data) ? data : data?.items || [];
-  renderDocuments(documentsCache);
-  if (!skipStatusMessage) setStatus("ok", "Connected");
-  updateDashboardMetrics();
-}
-
-async function loadAnnouncementsAndRender(skipStatusMessage = false) {
-  if (!skipStatusMessage) setStatus("loading", "Loading announcements");
-  const data = await api("/api/announcements");
-  announcementsCache = Array.isArray(data) ? data : data?.items || [];
-  renderAnnouncements(announcementsCache, "announcementsList");
-  if (!skipStatusMessage) setStatus("ok", "Connected");
-  updateDashboardMetrics();
-}
-
-async function downloadDocument(doc) {
-  const contentDocumentId = doc.contentDocumentId || doc.id;
-  if (!contentDocumentId) {
-    throw new Error("Document ID was not available for download.");
-  }
-
-  setStatus("loading", "Preparing download");
-  const url = `/api/docs/download?id=${encodeURIComponent(contentDocumentId)}`;
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${await getAccessToken()}`
-    }
-  });
-
-  if (!response.ok) {
-    throw new Error(`Download failed with status ${response.status}`);
-  }
-
-  const blob = await response.blob();
-  const objectUrl = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = objectUrl;
-  a.download = doc.title || doc.name || "document";
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(objectUrl);
-  setStatus("ok", "Connected");
-  showToast("Document download started.");
-}
+/* =========================================================
+   24. FILE HELPERS / FILE UI
+   ========================================================= */
 
 function readFileAsBase64Payload(file) {
   return new Promise((resolve, reject) => {
@@ -1356,6 +1433,10 @@ function updateSelectedFilesUI() {
 
   meta.textContent = `${files.length} ${files.length === 1 ? "file selected" : "files selected"}`;
 }
+
+/* =========================================================
+   25. MAINTENANCE FORM
+   ========================================================= */
 
 function initMaintenanceForm() {
   $("photos")?.addEventListener("change", () => {
@@ -1425,6 +1506,10 @@ function initMaintenanceForm() {
     }
   });
 }
+
+/* =========================================================
+   26. PROFILE FORM
+   ========================================================= */
 
 function initProfileForm() {
   $("profileEmail")?.addEventListener("input", () => setProfileMessage("", ""));
@@ -1504,13 +1589,9 @@ function initTenancyDetailEditButtons() {
   });
 }
 
-function initModalControls() {
-  document.querySelectorAll("[data-close-modal]").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      closeModalById(btn.dataset.closeModal);
-    });
-  });
-}
+/* =========================================================
+   27. MAINTENANCE MESSAGING
+   ========================================================= */
 
 function initMaintenanceMessaging() {
   const sendBtn = $("maintenanceMessageSendBtn");
@@ -1593,6 +1674,42 @@ function initMaintenanceMessaging() {
   });
 }
 
+/* =========================================================
+   28. NAVIGATION / FILTER INITIALISERS
+   ========================================================= */
+
+function initNavigation() {
+  document.querySelectorAll(".nav__item").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      openViewAndLoad(btn.dataset.view);
+    });
+  });
+
+  document.querySelectorAll("[data-open-view]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      openViewAndLoad(btn.dataset.openView);
+    });
+  });
+}
+
+function initMaintenanceFilters() {
+  document.querySelectorAll("[data-maintenance-filter]").forEach((chip) => {
+    chip.addEventListener("click", () => {
+      maintenanceFilter = chip.dataset.maintenanceFilter || "all";
+
+      document.querySelectorAll("[data-maintenance-filter]").forEach((c) => {
+        c.classList.toggle("is-active", c === chip);
+      });
+
+      renderFilteredMaintenance();
+    });
+  });
+}
+
+/* =========================================================
+   29. AUTH / GLOBAL BUTTONS / DELEGATED CLICK HANDLERS
+   ========================================================= */
+
 function initAuthButtons() {
   $("loginBtn")?.addEventListener("click", login);
   $("logoutBtn")?.addEventListener("click", openLogoutModal);
@@ -1673,6 +1790,10 @@ function initAuthButtons() {
   });
 }
 
+/* =========================================================
+   30. AUTH STATE RENDERING
+   ========================================================= */
+
 function renderLoggedInState() {
   $("authLoading").classList.add("hidden");
   $("guestScreen").classList.add("hidden");
@@ -1684,6 +1805,10 @@ function renderLoggedOutState() {
   $("guestScreen").classList.remove("hidden");
   $("app").classList.add("hidden");
 }
+
+/* =========================================================
+   31. APP BOOTSTRAP
+   ========================================================= */
 
 async function boot() {
   if (isBooted) return;
@@ -1748,5 +1873,9 @@ async function boot() {
     showToast("We could not load the portal session. Please sign in again.");
   }
 }
+
+/* =========================================================
+   32. STARTUP
+   ========================================================= */
 
 window.addEventListener("DOMContentLoaded", boot);
