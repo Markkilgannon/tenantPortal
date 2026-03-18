@@ -991,7 +991,9 @@ if ($("maintenanceHistoryCount")) {
   $("maintenanceHistoryCount").textContent = "0 updates";
 }
 if ($("maintenanceDetailMeta")) {
-  $("maintenanceDetailMeta").textContent = "—";
+  $("maintenanceDetailMeta").textContent = detail.createdDate
+    ? `Submitted ${safeDateTime(detail.createdDate)}`
+    : "—";
 }
 
   if (!id) {
@@ -1001,9 +1003,14 @@ if ($("maintenanceDetailMeta")) {
 
   activeMaintenanceItem = item;
 
-  if ($("maintenanceDetailTitle")) {
-    $("maintenanceDetailTitle").textContent = safeText(item.subject, "Request details");
-  }
+if ($("maintenanceDetailTitle")) {
+  $("maintenanceDetailTitle").textContent = safeText(
+    detail.referenceNumber
+      ? `${detail.referenceNumber} · ${detail.subject || "Request details"}`
+      : detail.subject,
+    "Request details"
+  );
+}
 
   if ($("maintenanceDetailStatus")) {
     $("maintenanceDetailStatus").innerHTML = `
