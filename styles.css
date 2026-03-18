@@ -1,3 +1,7 @@
+/* =========================================================
+   01. DESIGN TOKENS / ROOT
+   ========================================================= */
+
 :root {
   --bg: #f6f9fc;
   --panel: #ffffff;
@@ -30,6 +34,10 @@
   --topbar-height: 84px;
   --focus-ring: 0 0 0 4px rgba(99, 91, 255, 0.14);
 }
+
+/* =========================================================
+   02. GLOBAL RESET / BASE
+   ========================================================= */
 
 *,
 *::before,
@@ -65,67 +73,21 @@ button {
   display: none !important;
 }
 
-.portal-root {
-  min-height: 100vh;
+.hidden-visually {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
 }
 
-.guest-screen {
-  min-height: 100vh;
-  display: grid;
-  place-items: center;
-  padding: 32px 20px;
-}
-
-.guest-screen--muted .guest-card {
-  opacity: 0.92;
-}
-
-.guest-card {
-  width: min(560px, 100%);
-  background: rgba(255, 255, 255, 0.92);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(230, 235, 241, 0.95);
-  border-radius: 28px;
-  box-shadow: var(--shadow-elevated);
-  padding: 32px;
-}
-
-.brand-lockup {
-  display: flex;
-  gap: 16px;
-  align-items: flex-start;
-}
-
-.brand-lockup--compact {
-  align-items: center;
-}
-
-.brand-lockup__mark {
-  width: 54px;
-  height: 54px;
-  border-radius: 16px;
-  display: grid;
-  place-items: center;
-  background: linear-gradient(135deg, var(--primary) 0%, #8b5cf6 100%);
-  color: #fff;
-  font-weight: 700;
-  letter-spacing: 0.02em;
-  box-shadow: 0 8px 24px rgba(99, 91, 255, 0.22);
-  flex-shrink: 0;
-}
-
-.eyebrow {
-  margin: 0 0 6px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--primary);
-}
-
-.eyebrow--tight {
-  margin-bottom: 4px;
-}
+/* =========================================================
+   03. GLOBAL TYPOGRAPHY / SHARED TEXT
+   ========================================================= */
 
 .guest-card h1,
 .sidebar__title,
@@ -152,45 +114,84 @@ button {
   color: var(--text-soft);
 }
 
-.detail-list__value {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  justify-content: flex-end;
-  text-align: right;
+.eyebrow {
+  margin: 0 0 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--primary);
 }
 
-.detail-list__value--editable {
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
+.eyebrow--tight {
+  margin-bottom: 4px;
 }
 
-.detail-edit-btn {
-  width: 30px;
-  height: 30px;
-  border-radius: 10px;
-  border: 1px solid var(--border);
-  background: #fff;
-  color: var(--text-soft);
-  display: inline-grid;
+/* =========================================================
+   04. APP ROOT / PAGE SHELL
+   ========================================================= */
+
+.portal-root {
+  min-height: 100vh;
+}
+
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+}
+
+.main-shell {
+  flex: 1;
+  min-width: 0;
+}
+
+.content-shell {
+  padding: 24px 32px 32px;
+}
+
+.view {
+  display: none;
+  animation: sectionFadeIn 220ms ease;
+}
+
+.view.is-active {
+  display: block;
+}
+
+@keyframes sectionFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* =========================================================
+   05. GUEST / AUTH / LOADING SCREENS
+   ========================================================= */
+
+.guest-screen {
+  min-height: 100vh;
+  display: grid;
   place-items: center;
-  padding: 0;
-  line-height: 1;
-  font-size: 13px;
-  transition: border-color var(--transition), color var(--transition),
-    background var(--transition), transform var(--transition), box-shadow var(--transition);
+  padding: 32px 20px;
 }
 
-.detail-edit-btn:hover {
-  border-color: var(--border-strong);
-  color: var(--text);
-  transform: translateY(-1px);
+.guest-screen--muted .guest-card {
+  opacity: 0.92;
 }
 
-.detail-edit-btn:focus-visible {
-  outline: none;
-  box-shadow: var(--focus-ring);
+.guest-card {
+  width: min(560px, 100%);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(230, 235, 241, 0.95);
+  border-radius: 28px;
+  box-shadow: var(--shadow-elevated);
+  padding: 32px;
 }
 
 .guest-copy {
@@ -203,10 +204,33 @@ button {
   margin-top: 28px;
 }
 
-.app-shell {
-  min-height: 100vh;
+.brand-lockup {
   display: flex;
+  gap: 16px;
+  align-items: flex-start;
 }
+
+.brand-lockup--compact {
+  align-items: center;
+}
+
+.brand-lockup__mark {
+  width: 54px;
+  height: 54px;
+  border-radius: 16px;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, var(--primary) 0%, #8b5cf6 100%);
+  color: #fff;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  box-shadow: 0 8px 24px rgba(99, 91, 255, 0.22);
+  flex-shrink: 0;
+}
+
+/* =========================================================
+   06. SIDEBAR
+   ========================================================= */
 
 .sidebar {
   width: var(--sidebar-width);
@@ -238,6 +262,17 @@ button {
 .sidebar__close {
   display: none;
 }
+
+.sidebar__footer {
+  margin-top: auto;
+  padding-top: 24px;
+  display: grid;
+  gap: 18px;
+}
+
+/* =========================================================
+   07. SIDEBAR NAVIGATION
+   ========================================================= */
 
 .nav {
   display: grid;
@@ -275,12 +310,9 @@ button {
   font-size: 15px;
 }
 
-.sidebar__footer {
-  margin-top: auto;
-  padding-top: 24px;
-  display: grid;
-  gap: 18px;
-}
+/* =========================================================
+   08. AVATARS / TENANT CHIP / TENANT MINI
+   ========================================================= */
 
 .tenant-mini,
 .tenant-chip {
@@ -330,10 +362,36 @@ button {
   border-radius: 14px;
 }
 
-.main-shell {
-  flex: 1;
-  min-width: 0;
+.tenant-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
 }
+
+.tenant-chip__meta {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+}
+
+.tenant-chip__title {
+  white-space: nowrap;
+}
+
+.tenant-chip--compact {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 14px 6px 6px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: #fff;
+  min-height: 48px;
+}
+
+/* =========================================================
+   09. TOPBAR
+   ========================================================= */
 
 .topbar {
   min-height: 78px;
@@ -413,56 +471,9 @@ button {
   box-shadow: 0 0 0 6px rgba(15, 159, 110, 0.08);
 }
 
-.tenant-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.tenant-chip__meta {
-  min-width: 0;
-  display: flex;
-  align-items: center;
-}
-
-.tenant-chip__title {
-  white-space: nowrap;
-}
-
-.tenant-chip--compact {
-  display: inline-flex;
-  align-items: center;
-  gap: 12px;
-  padding: 6px 14px 6px 6px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  background: #fff;
-  min-height: 48px;
-}
-
-.content-shell {
-  padding: 24px 32px 32px;
-}
-
-.view {
-  display: none;
-  animation: sectionFadeIn 220ms ease;
-}
-
-.view.is-active {
-  display: block;
-}
-
-@keyframes sectionFadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(6px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
+/* =========================================================
+   10. DASHBOARD / PAGE GRIDS
+   ========================================================= */
 
 .metrics-grid {
   display: grid;
@@ -470,6 +481,24 @@ button {
   gap: 18px;
   margin-bottom: 24px;
 }
+
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+/* =========================================================
+   11. SHARED CARDS / PANELS / CALLOUTS / LIST ITEMS
+   ========================================================= */
 
 .metric-card,
 .panel-card,
@@ -553,13 +582,6 @@ button {
   flex-wrap: wrap;
 }
 
-.dashboard-grid {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 24px;
-  align-items: start;
-}
-
 .panel-card {
   padding: 20px;
 }
@@ -567,6 +589,10 @@ button {
 .panel-card--narrow {
   max-width: 680px;
 }
+
+/* =========================================================
+   12. SECTION HEADERS
+   ========================================================= */
 
 .section-header {
   display: flex;
@@ -591,6 +617,10 @@ button {
   align-items: center;
   flex-wrap: wrap;
 }
+
+/* =========================================================
+   13. LISTS / ANNOUNCEMENTS / STACKS
+   ========================================================= */
 
 .list-stack {
   display: grid;
@@ -669,6 +699,10 @@ button {
   background: linear-gradient(180deg, #fff, #fff8f8);
 }
 
+/* =========================================================
+   14. DETAIL LISTS / EDITABLE DETAIL ROWS
+   ========================================================= */
+
 .detail-list {
   display: grid;
   gap: 12px;
@@ -701,6 +735,51 @@ button {
   font-weight: 600;
   color: var(--text);
 }
+
+.detail-list__value {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.detail-list__value--editable {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.detail-edit-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text-soft);
+  display: inline-grid;
+  place-items: center;
+  padding: 0;
+  line-height: 1;
+  font-size: 13px;
+  transition: border-color var(--transition), color var(--transition),
+    background var(--transition), transform var(--transition), box-shadow var(--transition);
+}
+
+.detail-edit-btn:hover {
+  border-color: var(--border-strong);
+  color: var(--text);
+  transform: translateY(-1px);
+}
+
+.detail-edit-btn:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* =========================================================
+   15. QUICK ACTIONS / ACTION CARDS
+   ========================================================= */
 
 .quick-actions {
   display: grid;
@@ -735,6 +814,10 @@ button {
   line-height: 1.55;
   font-size: 13px;
 }
+
+/* =========================================================
+   16. BUTTONS / ICON BUTTONS / CHIPS / INPUTS
+   ========================================================= */
 
 .btn,
 .icon-btn,
@@ -847,6 +930,10 @@ button {
   border-color: rgba(99, 91, 255, 0.18);
 }
 
+/* =========================================================
+   17. FORMS
+   ========================================================= */
+
 .form-stack {
   display: grid;
   gap: 16px;
@@ -940,6 +1027,10 @@ button {
   font-size: 13px;
 }
 
+/* =========================================================
+   18. BADGES / STATUS LABELS
+   ========================================================= */
+
 .badge {
   display: inline-flex;
   align-items: center;
@@ -993,6 +1084,10 @@ button {
   border-color: rgba(209, 67, 67, 0.18);
   color: #b91c1c;
 }
+
+/* =========================================================
+   19. EMPTY STATES / SKELETONS / FILE CHIPS
+   ========================================================= */
 
 .empty-state {
   border: 1px dashed var(--border-strong);
@@ -1087,6 +1182,10 @@ button {
   font-weight: 650;
 }
 
+/* =========================================================
+   20. GENERIC MODAL SYSTEM
+   ========================================================= */
+
 .modal {
   position: fixed;
   inset: 0;
@@ -1150,6 +1249,10 @@ button {
   justify-content: flex-end;
   flex-wrap: wrap;
 }
+
+/* =========================================================
+   21. GENERIC DETAIL SUMMARY / GENERIC TIMELINE
+   ========================================================= */
 
 .detail-summary {
   margin-bottom: 16px;
@@ -1271,16 +1374,9 @@ button {
   line-height: 1.55;
 }
 
-@media (max-width: 680px) {
-  .timeline-item__top {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .timeline-item__meta {
-    white-space: normal;
-  }
-}
+/* =========================================================
+   22. TOASTS
+   ========================================================= */
 
 .toast {
   position: fixed;
@@ -1308,6 +1404,10 @@ button {
   }
 }
 
+/* =========================================================
+   23. MOBILE SIDEBAR OVERLAY
+   ========================================================= */
+
 .mobile-sidebar-overlay {
   position: fixed;
   inset: 0;
@@ -1324,135 +1424,9 @@ button {
   pointer-events: auto;
 }
 
-@media (max-width: 1180px) {
-  .metrics-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .dashboard-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 920px) {
-  .sidebar {
-    position: fixed;
-    inset: 0 auto 0 0;
-    transform: translateX(-100%);
-    transition: transform var(--transition);
-    box-shadow: var(--shadow-elevated);
-  }
-
-  .sidebar.is-open {
-    transform: translateX(0);
-  }
-
-  .sidebar__close,
-  .topbar__menu {
-    display: grid;
-  }
-
-  .topbar {
-    padding: 12px 18px;
-    min-height: 72px;
-  }
-
-  .content-shell {
-    padding: 18px;
-  }
-
-  .topbar__right .tenant-chip {
-    display: none;
-  }
-
-  .page-title--topbar {
-    font-size: 24px;
-  }
-}
-
-@media (max-width: 680px) {
-  .guest-card,
-  .panel-card,
-  .metric-card,
-  .callout-card,
-  .modal__dialog {
-    border-radius: 20px;
-  }
-
-  .metrics-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .section-header,
-  .callout-card,
-  .list-item__top,
-  .list-item__bottom,
-  .detail-list__row {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .section-header--stack-mobile {
-    align-items: flex-start;
-  }
-
-  .topbar {
-    padding: 12px 16px;
-    min-height: 72px;
-  }
-
-  .topbar__left {
-    width: 100%;
-  }
-
-  .topbar__right {
-    width: auto;
-    margin-left: auto;
-    gap: 10px;
-  }
-
-  .section-actions {
-    width: 100%;
-  }
-
-  .chip-row {
-    width: 100%;
-  }
-
-  .modal__footer {
-    justify-content: stretch;
-  }
-
-  .modal__footer .btn {
-    width: 100%;
-  }
-
-  .toast {
-    right: 12px;
-    left: 12px;
-    max-width: none;
-  }
-}
-
-.profile-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 24px;
-  align-items: start;
-}
-
-@media (max-width: 980px) {
-  .profile-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 680px) {
-  .modal__dialog {
-    max-height: calc(100vh - 16px);
-    margin: 8px auto;
-  }
-}
+/* =========================================================
+   24. LARGE MAINTENANCE DETAIL MODAL LAYOUT
+   ========================================================= */
 
 .modal__dialog--xl {
   width: min(1200px, calc(100vw - 32px));
@@ -1529,6 +1503,12 @@ button {
   white-space: pre-wrap;
 }
 
+/* =========================================================
+   25. MAINTENANCE DETAIL TIMELINE OVERRIDES
+   NOTE: Kept because these are currently in use and intentionally
+   override earlier generic timeline styles.
+   ========================================================= */
+
 .timeline-list {
   display: flex;
   flex-direction: column;
@@ -1572,6 +1552,10 @@ button {
   white-space: pre-wrap;
 }
 
+/* =========================================================
+   26. REQUEST MODAL WRAPPER
+   ========================================================= */
+
 .modal__dialog--request {
   max-width: 920px;
   max-height: 90vh;
@@ -1590,6 +1574,14 @@ button {
   font-size: 0.96rem;
 }
 
+.modal__footer--request {
+  padding-top: 2px;
+}
+
+/* =========================================================
+   27. REQUEST MODAL - SHARED CARDS
+   ========================================================= */
+
 .request-summary-card,
 .request-chat-card,
 .request-history-strip {
@@ -1604,6 +1596,10 @@ button {
 .request-chat-card {
   margin: 0 0 14px;
 }
+
+/* =========================================================
+   28. REQUEST MODAL - SUMMARY
+   ========================================================= */
 
 .request-summary-card--simple {
   padding: 18px 20px;
@@ -1633,6 +1629,16 @@ button {
   font-weight: 700;
   color: var(--text-faint);
 }
+
+.detail-block__subtext--tight {
+  margin: 2px 0 0;
+  font-size: 0.92rem;
+  color: var(--text-soft);
+}
+
+/* =========================================================
+   29. REQUEST MODAL - HISTORY STRIP / ACCORDION
+   ========================================================= */
 
 .request-history-strip {
   padding: 14px 20px;
@@ -1688,6 +1694,10 @@ button {
   gap: 14px;
 }
 
+/* =========================================================
+   30. REQUEST MODAL - CHAT CARD
+   ========================================================= */
+
 .request-chat-card--clean {
   padding: 18px 20px 16px;
   display: flex;
@@ -1697,12 +1707,6 @@ button {
 
 .request-chat-card__header--tight {
   margin-bottom: 6px;
-}
-
-.detail-block__subtext--tight {
-  margin: 2px 0 0;
-  font-size: 0.92rem;
-  color: var(--text-soft);
 }
 
 .chat-thread--clean {
@@ -1723,6 +1727,10 @@ button {
   background: var(--panel-2);
   color: var(--text-soft);
 }
+
+/* =========================================================
+   31. REQUEST MODAL - CHAT MESSAGES
+   ========================================================= */
 
 .chat-message {
   max-width: 72%;
@@ -1763,6 +1771,10 @@ button {
   white-space: pre-wrap;
   word-break: break-word;
 }
+
+/* =========================================================
+   32. REQUEST MODAL - CHAT COMPOSER
+   ========================================================= */
 
 .chat-composer--clean {
   display: flex;
@@ -1815,21 +1827,84 @@ button {
   color: var(--text-soft);
 }
 
-.modal__footer--request {
-  padding-top: 2px;
+/* =========================================================
+   33. RESPONSIVE - TIMELINE
+   ========================================================= */
+
+@media (max-width: 680px) {
+  .timeline-item__top {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .timeline-item__meta {
+    white-space: normal;
+  }
 }
 
-.hidden-visually {
-  position: absolute !important;
-  width: 1px !important;
-  height: 1px !important;
-  padding: 0 !important;
-  margin: -1px !important;
-  overflow: hidden !important;
-  clip: rect(0, 0, 0, 0) !important;
-  white-space: nowrap !important;
-  border: 0 !important;
+/* =========================================================
+   34. RESPONSIVE - LARGE TABLET / DESKTOP DOWN
+   ========================================================= */
+
+@media (max-width: 1180px) {
+  .metrics-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .dashboard-grid {
+    grid-template-columns: 1fr;
+  }
 }
+
+/* =========================================================
+   35. RESPONSIVE - TABLET
+   ========================================================= */
+
+@media (max-width: 980px) {
+  .profile-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 920px) {
+  .sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    transform: translateX(-100%);
+    transition: transform var(--transition);
+    box-shadow: var(--shadow-elevated);
+  }
+
+  .sidebar.is-open {
+    transform: translateX(0);
+  }
+
+  .sidebar__close,
+  .topbar__menu {
+    display: grid;
+  }
+
+  .topbar {
+    padding: 12px 18px;
+    min-height: 72px;
+  }
+
+  .content-shell {
+    padding: 18px;
+  }
+
+  .topbar__right .tenant-chip {
+    display: none;
+  }
+
+  .page-title--topbar {
+    font-size: 24px;
+  }
+}
+
+/* =========================================================
+   36. RESPONSIVE - MOBILE
+   ========================================================= */
 
 @media (max-width: 768px) {
   .modal__dialog--request {
@@ -1851,5 +1926,76 @@ button {
 
   .chat-composer__send {
     width: 100%;
+  }
+}
+
+@media (max-width: 680px) {
+  .guest-card,
+  .panel-card,
+  .metric-card,
+  .callout-card,
+  .modal__dialog {
+    border-radius: 20px;
+  }
+
+  .metrics-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .section-header,
+  .callout-card,
+  .list-item__top,
+  .list-item__bottom,
+  .detail-list__row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .section-header--stack-mobile {
+    align-items: flex-start;
+  }
+
+  .topbar {
+    padding: 12px 16px;
+    min-height: 72px;
+  }
+
+  .topbar__left {
+    width: 100%;
+  }
+
+  .topbar__right {
+    width: auto;
+    margin-left: auto;
+    gap: 10px;
+  }
+
+  .section-actions {
+    width: 100%;
+  }
+
+  .chip-row {
+    width: 100%;
+  }
+
+  .modal__footer {
+    justify-content: stretch;
+  }
+
+  .modal__footer .btn {
+    width: 100%;
+  }
+
+  .toast {
+    right: 12px;
+    left: 12px;
+    max-width: none;
+  }
+}
+
+@media (max-width: 680px) {
+  .modal__dialog {
+    max-height: calc(100vh - 16px);
+    margin: 8px auto;
   }
 }
