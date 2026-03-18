@@ -505,32 +505,35 @@
 
       <div id="maintenanceMessagesList" class="chat-thread chat-thread--clean">
         <div class="chat-empty">
-          No messages yet. Start the conversation with the property team.
+          No messages yet.<br />
+          Start the conversation with the property team.
         </div>
       </div>
 
-      <div class="chat-composer chat-composer--clean">
-        <label class="hidden-visually" for="maintenanceMessageInput">Message</label>
-        <textarea
-          id="maintenanceMessageInput"
-          class="chat-composer__input"
-          rows="2"
-          maxlength="1000"
-          placeholder="Write a message..."
-        ></textarea>
+      <div class="chat-composer-wrap">
+        <div class="chat-composer chat-composer--clean">
+          <label class="hidden-visually" for="maintenanceMessageInput">Message</label>
+          <textarea
+            id="maintenanceMessageInput"
+            class="chat-composer__input"
+            rows="2"
+            maxlength="1000"
+            placeholder="Write a message..."
+          ></textarea>
 
-        <button
-          id="maintenanceMessageSendBtn"
-          class="chat-composer__send"
-          type="button"
-        >
-          Send
-        </button>
+          <button
+            id="maintenanceMessageSendBtn"
+            class="chat-composer__send"
+            type="button"
+          >
+            Send
+          </button>
+        </div>
+
+        <p id="maintenanceMessageMeta" class="chat-composer__meta">
+          Press Enter to send. Shift + Enter for a new line.
+        </p>
       </div>
-
-      <p id="maintenanceMessageMeta" class="chat-composer__meta">
-        Press Enter to send. Shift + Enter for a new line.
-      </p>
     </section>
 
     <div class="modal__footer modal__footer--request">
