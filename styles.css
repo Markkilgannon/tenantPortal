@@ -364,8 +364,6 @@ button {
 
 .tenant-chip {
   display: inline-flex;
-  align-items: center;
-  gap: 12px;
 }
 
 .tenant-chip__meta {
@@ -1221,6 +1219,21 @@ button {
   width: min(480px, calc(100vw - 24px));
 }
 
+.modal__dialog--xl {
+  width: min(1200px, calc(100vw - 32px));
+  max-height: 90vh;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.modal__dialog--request {
+  max-width: 920px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding-bottom: 8px;
+}
+
 @keyframes modalEnter {
   from {
     opacity: 0;
@@ -1250,8 +1263,23 @@ button {
   flex-wrap: wrap;
 }
 
+.modal__header--request {
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.modal__meta-row {
+  margin: 8px 0 0;
+  color: var(--text-soft);
+  font-size: 0.96rem;
+}
+
+.modal__footer--request {
+  padding-top: 2px;
+}
+
 /* =========================================================
-   21. GENERIC DETAIL SUMMARY / GENERIC TIMELINE
+   21. GENERIC DETAIL SUMMARY / DETAIL BLOCKS
    ========================================================= */
 
 .detail-summary {
@@ -1289,89 +1317,10 @@ button {
   line-height: 1.65;
 }
 
-.timeline-list {
-  display: grid;
-  gap: 14px;
-}
-
-.timeline-item {
-  position: relative;
-  padding-left: 22px;
-}
-
-.timeline-item::before {
-  content: "";
-  position: absolute;
-  left: 6px;
-  top: 8px;
-  bottom: -18px;
-  width: 2px;
-  background: var(--border);
-}
-
-.timeline-item:last-child::before {
-  bottom: 8px;
-}
-
-.timeline-item::after {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 8px;
-  width: 14px;
-  height: 14px;
-  border-radius: 999px;
-  background: #fff;
-  border: 2px solid var(--primary);
-  box-shadow: 0 0 0 4px rgba(99, 91, 255, 0.08);
-}
-
-.timeline-item__top {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  align-items: flex-start;
-  margin-bottom: 6px;
-}
-
-.timeline-item__title {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text);
-}
-
-.timeline-item__meta {
-  margin: 0;
-  font-size: 12px;
+.detail-block__subtext--tight {
+  margin: 2px 0 0;
+  font-size: 0.92rem;
   color: var(--text-soft);
-  white-space: nowrap;
-}
-
-.timeline-item__body {
-  margin: 0;
-  font-size: 14px;
-  line-height: 1.6;
-  color: var(--text);
-}
-
-.timeline-item__sub {
-  margin: 8px 0 0;
-  font-size: 12px;
-  color: var(--text-soft);
-}
-
-.timeline-empty {
-  border: 1px dashed var(--border-strong);
-  border-radius: 16px;
-  padding: 16px;
-  background: linear-gradient(180deg, #fff, #fcfdff);
-}
-
-.timeline-empty p {
-  margin: 0;
-  color: var(--text-soft);
-  line-height: 1.55;
 }
 
 /* =========================================================
@@ -1427,14 +1376,6 @@ button {
 /* =========================================================
    24. LARGE MAINTENANCE DETAIL MODAL LAYOUT
    ========================================================= */
-
-.modal__dialog--xl {
-  width: min(1200px, calc(100vw - 32px));
-  max-height: 90vh;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-}
 
 .modal__body--split {
   display: grid;
@@ -1504,82 +1445,7 @@ button {
 }
 
 /* =========================================================
-   25. MAINTENANCE DETAIL TIMELINE OVERRIDES
-   NOTE: Kept because these are currently in use and intentionally
-   override earlier generic timeline styles.
-   ========================================================= */
-
-.timeline-list {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  max-height: 48vh;
-  overflow-y: auto;
-  padding-right: 6px;
-}
-
-.timeline-item {
-  position: relative;
-  padding-left: 18px;
-}
-
-.timeline-item::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  top: 7px;
-  width: 8px;
-  height: 8px;
-  border-radius: 999px;
-  background: var(--primary);
-}
-
-.timeline-item__title {
-  font-weight: 600;
-  margin: 0 0 4px;
-}
-
-.timeline-item__meta {
-  font-size: 0.85rem;
-  color: var(--text-soft);
-  margin: 0 0 6px;
-}
-
-.timeline-item__body {
-  margin: 0;
-  color: var(--text);
-  line-height: 1.5;
-  white-space: pre-wrap;
-}
-
-/* =========================================================
-   26. REQUEST MODAL WRAPPER
-   ========================================================= */
-
-.modal__dialog--request {
-  max-width: 920px;
-  max-height: 90vh;
-  overflow-y: auto;
-  padding-bottom: 8px;
-}
-
-.modal__header--request {
-  align-items: flex-start;
-  margin-bottom: 14px;
-}
-
-.modal__meta-row {
-  margin: 8px 0 0;
-  color: var(--text-soft);
-  font-size: 0.96rem;
-}
-
-.modal__footer--request {
-  padding-top: 2px;
-}
-
-/* =========================================================
-   27. REQUEST MODAL - SHARED CARDS
+   25. REQUEST MODAL - SHARED CARDS
    ========================================================= */
 
 .request-summary-card,
@@ -1598,7 +1464,7 @@ button {
 }
 
 /* =========================================================
-   28. REQUEST MODAL - SUMMARY
+   26. REQUEST MODAL - SUMMARY
    ========================================================= */
 
 .request-summary-card--simple {
@@ -1630,14 +1496,8 @@ button {
   color: var(--text-faint);
 }
 
-.detail-block__subtext--tight {
-  margin: 2px 0 0;
-  font-size: 0.92rem;
-  color: var(--text-soft);
-}
-
 /* =========================================================
-   29. REQUEST MODAL - HISTORY STRIP / ACCORDION
+   27. REQUEST MODAL - HISTORY STRIP / ACCORDION
    ========================================================= */
 
 .request-history-strip {
@@ -1688,14 +1548,90 @@ button {
   border-top: 1px solid var(--border);
 }
 
+/* =========================================================
+   28. TIMELINE / HISTORY
+   ========================================================= */
+
+.timeline-list,
 .timeline-list--history {
   display: flex;
   flex-direction: column;
   gap: 14px;
 }
 
+.timeline-list {
+  max-height: 48vh;
+  overflow-y: auto;
+  padding-right: 6px;
+}
+
+.timeline-item {
+  position: relative;
+  padding-left: 18px;
+}
+
+.timeline-item::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 7px;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--primary);
+}
+
+.timeline-item__top {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+  margin-bottom: 6px;
+}
+
+.timeline-item__title {
+  margin: 0 0 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.timeline-item__meta {
+  margin: 0 0 6px;
+  font-size: 0.85rem;
+  color: var(--text-soft);
+  white-space: nowrap;
+}
+
+.timeline-item__body {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text);
+  white-space: pre-wrap;
+}
+
+.timeline-item__sub {
+  margin: 8px 0 0;
+  font-size: 12px;
+  color: var(--text-soft);
+}
+
+.timeline-empty {
+  border: 1px dashed var(--border-strong);
+  border-radius: 16px;
+  padding: 16px;
+  background: linear-gradient(180deg, #fff, #fcfdff);
+}
+
+.timeline-empty p {
+  margin: 0;
+  color: var(--text-soft);
+  line-height: 1.55;
+}
+
 /* =========================================================
-   30. REQUEST MODAL - CHAT CARD
+   29. REQUEST MODAL - CHAT CARD
    ========================================================= */
 
 .request-chat-card--clean {
@@ -1729,7 +1665,7 @@ button {
 }
 
 /* =========================================================
-   31. REQUEST MODAL - CHAT MESSAGES
+   30. REQUEST MODAL - CHAT MESSAGES
    ========================================================= */
 
 .chat-message {
@@ -1773,7 +1709,7 @@ button {
 }
 
 /* =========================================================
-   32. REQUEST MODAL - CHAT COMPOSER
+   31. REQUEST MODAL - CHAT COMPOSER
    ========================================================= */
 
 .chat-composer--clean {
@@ -1828,22 +1764,7 @@ button {
 }
 
 /* =========================================================
-   33. RESPONSIVE - TIMELINE
-   ========================================================= */
-
-@media (max-width: 680px) {
-  .timeline-item__top {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .timeline-item__meta {
-    white-space: normal;
-  }
-}
-
-/* =========================================================
-   34. RESPONSIVE - LARGE TABLET / DESKTOP DOWN
+   32. RESPONSIVE
    ========================================================= */
 
 @media (max-width: 1180px) {
@@ -1855,10 +1776,6 @@ button {
     grid-template-columns: 1fr;
   }
 }
-
-/* =========================================================
-   35. RESPONSIVE - TABLET
-   ========================================================= */
 
 @media (max-width: 980px) {
   .profile-grid {
@@ -1902,10 +1819,6 @@ button {
   }
 }
 
-/* =========================================================
-   36. RESPONSIVE - MOBILE
-   ========================================================= */
-
 @media (max-width: 768px) {
   .modal__dialog--request {
     max-width: calc(100vw - 20px);
@@ -1930,6 +1843,15 @@ button {
 }
 
 @media (max-width: 680px) {
+  .timeline-item__top {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .timeline-item__meta {
+    white-space: normal;
+  }
+
   .guest-card,
   .panel-card,
   .metric-card,
@@ -1991,9 +1913,7 @@ button {
     left: 12px;
     max-width: none;
   }
-}
 
-@media (max-width: 680px) {
   .modal__dialog {
     max-height: calc(100vh - 16px);
     margin: 8px auto;
