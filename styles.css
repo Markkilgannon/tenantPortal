@@ -1643,7 +1643,7 @@ button {
 }
 
 .request-chat-card__header--tight {
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 
 .chat-thread--clean {
@@ -1733,13 +1733,19 @@ button {
    31. REQUEST MODAL - CHAT COMPOSER
    ========================================================= */
 
+.chat-composer-wrap {
+  margin-top: 4px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
 .chat-composer--clean {
   display: flex;
   gap: 12px;
   align-items: flex-end;
-  padding-top: 14px;
-  margin-top: 4px;
-  border-top: 1px solid var(--border);
+  padding-top: 0;
+  margin-top: 0;
+  border-top: none;
 }
 
 .chat-composer__input {
@@ -1791,7 +1797,7 @@ button {
 }
 
 .chat-composer__meta {
-  margin: 8px 0 0;
+  margin: 10px 2px 0;
   font-size: 0.85rem;
   color: var(--text-soft);
 }
