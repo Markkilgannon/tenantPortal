@@ -1457,7 +1457,7 @@ renderMaintenanceMessages(maintenanceMessagesCache[id], {
 
 startMaintenanceMessagesPolling();
     setStatus("ok", "Connected");
-    } catch (error) {
+  } catch (error) {
     console.error(error);
     stopMaintenanceMessagesPolling();
     renderMaintenanceTimeline([]);
@@ -1468,6 +1468,7 @@ startMaintenanceMessagesPolling();
     setStatus("error", "Service unavailable");
     showToast(error.message || "Unable to load maintenance details.");
   }
+}
 
 function initMaintenanceHistoryAccordion() {
   const toggle = $("maintenanceHistoryToggle");
