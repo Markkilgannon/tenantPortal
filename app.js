@@ -27,6 +27,7 @@ let maintenanceMessagesCache = {};
 let activeMaintenanceItem = null;
 let isSendingMaintenanceMessage = false;
 let maintenanceMessagesPollTimer = null;
+let isSidebarCollapsed = false;
 
 /* =========================================================
    03. VIEW META
@@ -91,6 +92,10 @@ function getInitials(name) {
   if (!raw) return "TP";
   const parts = raw.split(/\s+/).slice(0, 2);
   return parts.map((p) => p[0]?.toUpperCase() || "").join("") || "TP";
+}
+
+function isMobileViewport() {
+  return window.matchMedia("(max-width: 1024px)").matches;
 }
 
 /* =========================================================
@@ -170,7 +175,32 @@ function setMaintenanceMessage(type, text) {
    07. SIDEBAR CONTROLS
    ========================================================= */
 
+function applySidebarState() {
+  const sidebar = $("sidebar");
+  const overlay = $("mobileSidebarOverlay");
+  const app = $("app");
+
+  if (!sidebar) return;
+
+  if (isMobileViewport()) {
+    sidebar.classList.remove("is-collapsed");
+    if (app) app.classList.remove("sidebar-collapsed");
+    if (overlay) overlay.classList.remove("is-visible");
+    return;
+  }
+
+  sidebar.classList.remove("is-open");
+  if (overlay) overlay.classList.remove("is-visible");
+
+  sidebar.classList.toggle("is-collapsed", isSidebarCollapsed);
+  if (app) {
+    app.classList.toggle("sidebar-collapsed", isSidebarCollapsed);
+  }
+}
+
 function openSidebar() {
+  if (!isMobileViewport()) return;
+
   const sidebar = $("sidebar");
   const overlay = $("mobileSidebarOverlay");
   if (sidebar) sidebar.classList.add("is-open");
@@ -178,6 +208,8 @@ function openSidebar() {
 }
 
 function closeSidebar() {
+  if (!isMobileViewport()) return;
+
   const sidebar = $("sidebar");
   const overlay = $("mobileSidebarOverlay");
   if (sidebar) sidebar.classList.remove("is-open");
@@ -188,11 +220,17 @@ function toggleSidebar() {
   const sidebar = $("sidebar");
   if (!sidebar) return;
 
-  if (sidebar.classList.contains("is-open")) {
-    closeSidebar();
-  } else {
-    openSidebar();
+  if (isMobileViewport()) {
+    if (sidebar.classList.contains("is-open")) {
+      closeSidebar();
+    } else {
+      openSidebar();
+    }
+    return;
   }
+
+  isSidebarCollapsed = !isSidebarCollapsed;
+  applySidebarState();
 }
 
 function initSidebarControls() {
@@ -204,11 +242,15 @@ function initSidebarControls() {
   if (closeBtn) closeBtn.addEventListener("click", closeSidebar);
   if (overlay) overlay.addEventListener("click", closeSidebar);
 
+  window.addEventListener("resize", applySidebarState);
+
   document.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") {
+    if (event.key === "Escape" && isMobileViewport()) {
       closeSidebar();
     }
   });
+
+  applySidebarState();
 }
 
 /* =========================================================
@@ -379,7 +421,10 @@ function setActiveView(viewName, options = {}) {
 
   updateTopbarMeta(resolvedView);
   saveView(resolvedView);
-  closeSidebar();
+
+  if (isMobileViewport()) {
+    closeSidebar();
+  }
 
   if (!options.skipScroll) {
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -1883,7 +1928,12 @@ function initAuthButtons() {
         closeAllModals();
         return;
       }
-      closeSidebar();
+
+      if (isMobileViewport()) {
+        closeSidebar();
+      }
+
+      return;
     }
 
     if (
@@ -1904,6 +1954,7 @@ function renderLoggedInState() {
   $("authLoading").classList.add("hidden");
   $("guestScreen").classList.add("hidden");
   $("app").classList.remove("hidden");
+  applySidebarState();
 }
 
 function renderLoggedOutState() {
