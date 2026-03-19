@@ -29,27 +29,74 @@
     </section>
 
     <section id="guestScreen" class="guest-screen hidden" aria-label="Login screen">
-      <div class="guest-card">
-        <div class="brand-lockup">
-          <div class="brand-lockup__mark">TP</div>
-          <div>
-            <p class="eyebrow">Tenant Portal</p>
-            <h1>Your home, documents, and maintenance in one place</h1>
+  <div class="guest-layout">
+    <div class="guest-card guest-card--hero">
+      <div class="guest-card__glow"></div>
+
+      <div class="brand-lockup guest-brand-lockup">
+        <div class="brand-lockup__mark">TP</div>
+        <div class="brand-lockup__copy">
+          <p class="eyebrow">Tenant Portal</p>
+          <h1>Your home, documents, and maintenance in one place</h1>
+        </div>
+      </div>
+
+      <p class="guest-copy guest-copy--hero">
+        Sign in securely to view your tenancy, submit maintenance requests,
+        download documents, and stay up to date with announcements.
+      </p>
+
+      <div class="guest-actions guest-actions--hero">
+        <button id="loginBtn" class="btn btn--primary btn--lg" type="button">
+          Sign in
+        </button>
+      </div>
+
+      <div class="guest-trust">
+        <span class="guest-trust__item">Secure sign-in</span>
+        <span class="guest-trust__item">Real-time maintenance updates</span>
+        <span class="guest-trust__item">Documents in one place</span>
+      </div>
+    </div>
+
+    <aside class="guest-preview" aria-hidden="true">
+      <div class="guest-preview__panel">
+        <div class="guest-preview__top">
+          <div class="guest-preview__chip">Connected</div>
+          <div class="guest-preview__avatar">TP</div>
+        </div>
+
+        <div class="guest-preview__metric-grid">
+          <div class="guest-preview__metric">
+            <span class="guest-preview__metric-label">Open requests</span>
+            <strong>1</strong>
+          </div>
+          <div class="guest-preview__metric">
+            <span class="guest-preview__metric-label">Documents</span>
+            <strong>3</strong>
           </div>
         </div>
 
-        <p class="guest-copy">
-          Sign in securely to view your tenancy, submit maintenance requests,
-          download documents, and stay up to date with announcements.
-        </p>
+        <div class="guest-preview__card">
+          <div class="guest-preview__card-header">
+            <span class="guest-preview__eyebrow">Activity</span>
+            <span class="guest-preview__pill">In Progress</span>
+          </div>
+          <h3>Sink repair</h3>
+          <p>Contractor scheduled for 21 Mar. Updates will appear here.</p>
+        </div>
 
-        <div class="guest-actions">
-          <button id="loginBtn" class="btn btn--primary btn--lg" type="button">
-            Sign in
-          </button>
+        <div class="guest-preview__card guest-preview__card--muted">
+          <div class="guest-preview__card-header">
+            <span class="guest-preview__eyebrow">Documents</span>
+          </div>
+          <h3>Lease agreement</h3>
+          <p>Latest tenancy files available in your portal workspace.</p>
         </div>
       </div>
-    </section>
+    </aside>
+  </div>
+</section>
 
     <div id="app" class="app-shell hidden">
       <div id="mobileSidebarOverlay" class="mobile-sidebar-overlay"></div>
