@@ -2280,7 +2280,7 @@ async function boot() {
       loadMe(),
       loadMaintenance(true),
       loadDocuments(true),
-      loadAnnouncementsAndRender(true)
+      loadAnnouncementsAndRender(true),
        loadNotifications(true)
     ]);
 
