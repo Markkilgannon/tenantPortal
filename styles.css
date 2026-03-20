@@ -648,6 +648,7 @@ button {
   top: calc(100% + 12px);
   right: 0;
   width: min(420px, calc(100vw - 32px));
+  max-height: min(72vh, 640px);
   background: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(18px);
   border: 1px solid rgba(230, 235, 241, 0.96);
@@ -655,6 +656,8 @@ button {
   box-shadow: 0 14px 44px rgba(15, 23, 42, 0.14);
   padding: 14px;
   z-index: 60;
+  display: flex;
+  flex-direction: column;
 }
 
 .notifications-dropdown__header {
@@ -665,6 +668,7 @@ button {
   padding-bottom: 12px;
   margin-bottom: 12px;
   border-bottom: 1px solid rgba(230, 235, 241, 0.78);
+  flex-shrink: 0;
 }
 
 .notifications-dropdown__title {
@@ -675,6 +679,27 @@ button {
 }
 
 .notifications-dropdown__list {
+  display: grid;
+  gap: 14px;
+  overflow-y: auto;
+  padding-right: 4px;
+  min-height: 0;
+}
+
+.notifications-dropdown__group {
+  display: grid;
+  gap: 10px;
+}
+
+.notifications-dropdown__group-heading {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-soft);
+  letter-spacing: 0.01em;
+  padding: 2px 2px 0;
+}
+
+.notifications-dropdown__group-list {
   display: grid;
   gap: 10px;
 }
@@ -697,8 +722,11 @@ button {
 }
 
 .notifications-dropdown__item--unread {
-  background: linear-gradient(180deg, #ffffff, #faf9ff);
-  border-color: rgba(99, 91, 255, 0.18);
+  background: linear-gradient(180deg, #f8f7ff 0%, #f3f1ff 100%);
+  border-color: rgba(99, 91, 255, 0.24);
+  box-shadow:
+    0 1px 2px rgba(15, 23, 42, 0.03),
+    0 10px 24px rgba(99, 91, 255, 0.08);
 }
 
 .notifications-dropdown__item-top {
@@ -720,7 +748,7 @@ button {
   height: 10px;
   border-radius: 999px;
   background: var(--primary);
-  box-shadow: 0 0 0 6px rgba(99, 91, 255, 0.10);
+  box-shadow: 0 0 0 6px rgba(99, 91, 255, 0.14);
   flex-shrink: 0;
 }
 
@@ -750,6 +778,19 @@ button {
   background: linear-gradient(180deg, #fff, #fcfdff);
 }
 
+.notifications-dropdown__list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.notifications-dropdown__list::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.35);
+  border-radius: 999px;
+}
+
+.notifications-dropdown__list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
 @media (max-width: 680px) {
   .notifications-dropdown {
     right: -8px;
@@ -766,7 +807,6 @@ button {
     align-items: flex-start;
   }
 }
-
 
 /* =========================================================
    10. DASHBOARD / PAGE GRIDS
