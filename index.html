@@ -132,18 +132,55 @@
           </div>
 
           <div class="topbar__right">
-            <div class="status-pill">
-              <span class="status-pill__dot"></span>
-              <span>Connected</span>
-            </div>
+  <div class="status-pill">
+    <span class="status-pill__dot"></span>
+    <span>Connected</span>
+  </div>
 
-            <button id="topbarTenantChip" class="tenant-chip tenant-chip--compact" type="button">
-              <span id="topbarInitials" class="avatar avatar--sm">TP</span>
-              <span class="tenant-chip__meta">
-                <span id="topbarTenantName" class="tenant-chip__title">Tenant</span>
-              </span>
-            </button>
-          </div>
+  <div class="notifications">
+    <button
+      id="notificationsBell"
+      class="icon-btn notifications__trigger"
+      type="button"
+      aria-label="Open notifications"
+      aria-expanded="false"
+      aria-controls="notificationsDropdown"
+    >
+      <span class="notifications__icon">🔔</span>
+      <span id="notificationsBellCount" class="notifications__count hidden">0</span>
+    </button>
+
+    <div
+      id="notificationsDropdown"
+      class="notifications-dropdown hidden"
+      aria-hidden="true"
+    >
+      <div class="notifications-dropdown__header">
+        <div>
+          <p class="eyebrow eyebrow--tight">Notifications</p>
+          <h3 class="notifications-dropdown__title">Recent updates</h3>
+        </div>
+
+        <button
+          id="markAllNotificationsReadBtn"
+          class="btn btn--ghost btn--sm"
+          type="button"
+        >
+          Mark all as read
+        </button>
+      </div>
+
+      <div id="notificationsDropdownList" class="notifications-dropdown__list"></div>
+    </div>
+  </div>
+
+  <button id="topbarTenantChip" class="tenant-chip tenant-chip--compact" type="button">
+    <span id="topbarInitials" class="avatar avatar--sm">TP</span>
+    <span class="tenant-chip__meta">
+      <span id="topbarTenantName" class="tenant-chip__title">Tenant</span>
+    </span>
+  </button>
+</div>
         </header>
 
         <div class="content-shell">
