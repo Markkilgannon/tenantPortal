@@ -606,6 +606,169 @@ button {
 }
 
 /* =========================================================
+   9. Notifications
+   ========================================================= */
+
+.notifications {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.notifications__trigger {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.notifications__icon {
+  line-height: 1;
+  font-size: 16px;
+}
+
+.notifications__count {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #6a63ff 0%, var(--primary) 100%);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  border: 2px solid #fff;
+  box-shadow: 0 8px 18px rgba(99, 91, 255, 0.24);
+}
+
+.notifications-dropdown {
+  position: absolute;
+  top: calc(100% + 12px);
+  right: 0;
+  width: min(420px, calc(100vw - 32px));
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(18px);
+  border: 1px solid rgba(230, 235, 241, 0.96);
+  border-radius: 22px;
+  box-shadow: 0 14px 44px rgba(15, 23, 42, 0.14);
+  padding: 14px;
+  z-index: 60;
+}
+
+.notifications-dropdown__header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+  border-bottom: 1px solid rgba(230, 235, 241, 0.78);
+}
+
+.notifications-dropdown__title {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.notifications-dropdown__list {
+  display: grid;
+  gap: 10px;
+}
+
+.notifications-dropdown__item {
+  width: 100%;
+  text-align: left;
+  background: rgba(255, 255, 255, 0.88);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 14px;
+  transition: border-color var(--transition), box-shadow var(--transition),
+    transform var(--transition), background var(--transition);
+}
+
+.notifications-dropdown__item:hover {
+  transform: translateY(-1px);
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-soft);
+}
+
+.notifications-dropdown__item--unread {
+  background: linear-gradient(180deg, #ffffff, #faf9ff);
+  border-color: rgba(99, 91, 255, 0.18);
+}
+
+.notifications-dropdown__item-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.notifications-dropdown__item-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.35;
+}
+
+.notifications-dropdown__item-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--primary);
+  box-shadow: 0 0 0 6px rgba(99, 91, 255, 0.10);
+  flex-shrink: 0;
+}
+
+.notifications-dropdown__item-text {
+  margin: 8px 0 0;
+  color: var(--text-soft);
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.notifications-dropdown__item-meta {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: var(--text-soft);
+  font-size: 12px;
+}
+
+.notifications-dropdown__empty {
+  border: 1px dashed var(--border-strong);
+  border-radius: 18px;
+  padding: 18px;
+  text-align: center;
+  color: var(--text-soft);
+  background: linear-gradient(180deg, #fff, #fcfdff);
+}
+
+@media (max-width: 680px) {
+  .notifications-dropdown {
+    right: -8px;
+    width: min(380px, calc(100vw - 24px));
+  }
+
+  .notifications-dropdown__header {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .notifications-dropdown__item-meta {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+
+/* =========================================================
    10. DASHBOARD / PAGE GRIDS
    ========================================================= */
 
