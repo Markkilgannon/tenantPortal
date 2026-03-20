@@ -28,6 +28,8 @@ let activeMaintenanceItem = null;
 let isSendingMaintenanceMessage = false;
 let maintenanceMessagesPollTimer = null;
 let isSidebarCollapsed = false;
+let notificationsCache = [];
+let isNotificationsDropdownOpen = false;
 
 /* =========================================================
    03. VIEW META
@@ -97,6 +99,90 @@ function getInitials(name) {
 function isMobileViewport() {
   return window.matchMedia("(max-width: 1024px)").matches;
 }
+
+function getMockNotifications() {
+  return [
+    {
+      id: "notif-1",
+      title: "New message on Sink Repair",
+      message: "The property team replied to your maintenance request.",
+      type: "Maintenance Message",
+      isRead: false,
+      createdDate: new Date(Date.now() - 1000 * 60 * 18).toISOString(),
+      actionType: "maintenance",
+      relatedRecordId: maintenanceItemsCache?.[0]?.id || maintenanceItemsCache?.[0]?.maintenanceId || null
+    },
+    {
+      id: "notif-2",
+      title: "New announcement posted",
+      message: "A property update has been added for your building.",
+      type: "Announcement",
+      isRead: false,
+      createdDate: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
+      actionType: "announcements"
+    },
+    {
+      id: "notif-3",
+      title: "Document available",
+      message: "A new tenancy document is available in your portal.",
+      type: "Document",
+      isRead: true,
+      createdDate: new Date(Date.now() - 1000 * 60 * 60 * 7).toISOString(),
+      actionType: "documents"
+    },
+    {
+      id: "notif-4",
+      title: "Maintenance status updated",
+      message: "Your repair request moved to In Progress.",
+      type: "Maintenance Update",
+      isRead: true,
+      createdDate: new Date(Date.now() - 1000 * 60 * 60 * 26).toISOString(),
+      actionType: "maintenance",
+      relatedRecordId: maintenanceItemsCache?.[0]?.id || maintenanceItemsCache?.[0]?.maintenanceId || null
+    },
+    {
+      id: "notif-5",
+      title: "Reminder from property team",
+      message: "Please upload an additional photo if possible.",
+      type: "Maintenance Message",
+      isRead: false,
+      createdDate: new Date(Date.now() - 1000 * 60 * 60 * 30).toISOString(),
+      actionType: "maintenance",
+      relatedRecordId: maintenanceItemsCache?.[0]?.id || maintenanceItemsCache?.[0]?.maintenanceId || null
+    },
+    {
+      id: "notif-6",
+      title: "Older document update",
+      message: "A historic tenancy file is available in Documents.",
+      type: "Document",
+      isRead: true,
+      createdDate: new Date(Date.now() - 1000 * 60 * 60 * 50).toISOString(),
+      actionType: "documents"
+    }
+  ];
+}
+
+function getUnreadNotificationsCount() {
+  return notificationsCache.filter((item) => !item.isRead).length;
+}
+
+function getRecentNotifications(limit = 5) {
+  return [...notificationsCache]
+    .sort((a, b) => new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime())
+    .slice(0, limit);
+}
+
+function notificationTypeBadgeClass(type) {
+  const key = String(type || "").trim().toLowerCase();
+
+  if (key.includes("message")) return "badge badge--in-progress";
+  if (key.includes("maintenance")) return "badge badge--open";
+  if (key.includes("announcement")) return "badge badge--high";
+  if (key.includes("document")) return "badge badge--default";
+
+  return "badge badge--default";
+}
+
 
 /* =========================================================
    05. LOCAL STORAGE
@@ -710,6 +796,188 @@ function renderHomeCallout() {
       </div>
     </div>
   `;
+}
+
+
+/* =========================================================
+   13B. Notifcation DropDown Functions
+   ========================================================= */
+
+function updateNotificationsBell() {
+  const count = getUnreadNotificationsCount();
+  const el = $("notificationsBellCount");
+  if (!el) return;
+
+  if (count > 0) {
+    el.textContent = count > 99 ? "99+" : String(count);
+    el.classList.remove("hidden");
+  } else {
+    el.textContent = "0";
+    el.classList.add("hidden");
+  }
+}
+
+function renderNotificationsDropdown() {
+  const target = $("notificationsDropdownList");
+  if (!target) return;
+
+  const items = getRecentNotifications(5);
+
+  if (!items.length) {
+    target.innerHTML = `
+      <div class="notifications-dropdown__empty">
+        No notifications yet.
+      </div>
+    `;
+    updateNotificationsBell();
+    return;
+  }
+
+  target.innerHTML = items
+    .map((item) => {
+      const unreadClass = item.isRead ? "" : "notifications-dropdown__item--unread";
+
+      return `
+        <button
+          class="notifications-dropdown__item ${unreadClass}"
+          type="button"
+          data-notification-id="${escapeHtml(item.id)}"
+        >
+          <div class="notifications-dropdown__item-top">
+            <span class="notifications-dropdown__item-title">${escapeHtml(item.title || "Notification")}</span>
+            ${!item.isRead ? `<span class="notifications-dropdown__item-dot" aria-hidden="true"></span>` : ""}
+          </div>
+
+          <p class="notifications-dropdown__item-text">${escapeHtml(item.message || "No details available.")}</p>
+
+          <div class="notifications-dropdown__item-meta">
+            <span class="${notificationTypeBadgeClass(item.type)}">${escapeHtml(item.type || "Update")}</span>
+            <span>${escapeHtml(safeDateTime(item.createdDate))}</span>
+          </div>
+        </button>
+      `;
+    })
+    .join("");
+
+  updateNotificationsBell();
+}
+
+function openNotificationsDropdown() {
+  const dropdown = $("notificationsDropdown");
+  const trigger = $("notificationsBell");
+  if (!dropdown || !trigger) return;
+
+  renderNotificationsDropdown();
+  dropdown.classList.remove("hidden");
+  dropdown.setAttribute("aria-hidden", "false");
+  trigger.setAttribute("aria-expanded", "true");
+  isNotificationsDropdownOpen = true;
+}
+
+function closeNotificationsDropdown() {
+  const dropdown = $("notificationsDropdown");
+  const trigger = $("notificationsBell");
+  if (!dropdown || !trigger) return;
+
+  dropdown.classList.add("hidden");
+  dropdown.setAttribute("aria-hidden", "true");
+  trigger.setAttribute("aria-expanded", "false");
+  isNotificationsDropdownOpen = false;
+}
+
+function toggleNotificationsDropdown() {
+  if (isNotificationsDropdownOpen) {
+    closeNotificationsDropdown();
+  } else {
+    openNotificationsDropdown();
+  }
+}
+
+function markNotificationAsRead(notificationId) {
+  notificationsCache = notificationsCache.map((item) =>
+    item.id === notificationId ? { ...item, isRead: true } : item
+  );
+
+  renderNotificationsDropdown();
+}
+
+function markAllNotificationsAsRead() {
+  notificationsCache = notificationsCache.map((item) => ({
+    ...item,
+    isRead: true
+  }));
+
+  renderNotificationsDropdown();
+  showToast("All notifications marked as read.");
+}
+
+async function handleNotificationClick(notificationId) {
+  const notification = notificationsCache.find((item) => item.id === notificationId);
+  if (!notification) return;
+
+  markNotificationAsRead(notificationId);
+  closeNotificationsDropdown();
+
+  if (notification.actionType === "maintenance" && notification.relatedRecordId) {
+    const item = maintenanceItemsCache.find((m) => {
+      return String(m.id || m.maintenanceId) === String(notification.relatedRecordId);
+    });
+
+    if (item) {
+      await openMaintenanceDetail(item);
+      return;
+    }
+
+    await openViewAndLoad("maintenance");
+    return;
+  }
+
+  if (notification.actionType === "announcements") {
+    await openViewAndLoad("announcements");
+    return;
+  }
+
+  if (notification.actionType === "documents") {
+    await openViewAndLoad("documents");
+    return;
+  }
+}
+
+async function loadNotifications(skipStatusMessage = false) {
+  if (!skipStatusMessage) setStatus("loading", "Loading notifications");
+
+  notificationsCache = getMockNotifications();
+  updateNotificationsBell();
+
+  if (!skipStatusMessage) setStatus("ok", "Connected");
+}
+
+function initNotificationsDropdown() {
+  $("notificationsBell")?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    toggleNotificationsDropdown();
+  });
+
+  $("notificationsDropdown")?.addEventListener("click", (event) => {
+    event.stopPropagation();
+  });
+
+  $("markAllNotificationsReadBtn")?.addEventListener("click", (event) => {
+    event.stopPropagation();
+    markAllNotificationsAsRead();
+  });
+
+  document.addEventListener("click", () => {
+    if (isNotificationsDropdownOpen) {
+      closeNotificationsDropdown();
+    }
+  });
+
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && isNotificationsDropdownOpen) {
+      closeNotificationsDropdown();
+    }
+  });
 }
 
 /* =========================================================
@@ -1874,6 +2142,12 @@ function initAuthButtons() {
       await openViewAndLoad(openViewBtn.dataset.openView);
       return;
     }
+     const notificationBtn = event.target.closest("[data-notification-id]");
+if (notificationBtn) {
+  const id = notificationBtn.dataset.notificationId;
+  await handleNotificationClick(id);
+  return;
+}
 
     const actionBtn = event.target.closest("[data-action], [data-empty-action]");
     const actionType =
@@ -1981,6 +2255,7 @@ async function boot() {
   initSidebarControls();
   initMaintenanceMessaging();
   initMaintenanceHistoryAccordion();
+   initNotificationsDropdown();
 
   try {
     requireAuth0Client();
@@ -2006,6 +2281,7 @@ async function boot() {
       loadMaintenance(true),
       loadDocuments(true),
       loadAnnouncementsAndRender(true)
+       loadNotifications(true)
     ]);
 
     const savedView = getSavedView();
