@@ -100,67 +100,6 @@ function isMobileViewport() {
   return window.matchMedia("(max-width: 1024px)").matches;
 }
 
-function getMockNotifications() {
-  return [
-    {
-      id: "notif-1",
-      title: "New message on Sink Repair",
-      message: "The property team replied to your maintenance request.",
-      type: "Maintenance Message",
-      isRead: false,
-      createdDate: new Date(Date.now() - 1000 * 60 * 18).toISOString(),
-      actionType: "maintenance",
-      relatedRecordId: maintenanceItemsCache?.[0]?.id || maintenanceItemsCache?.[0]?.maintenanceId || null
-    },
-    {
-      id: "notif-2",
-      title: "New announcement posted",
-      message: "A property update has been added for your building.",
-      type: "Announcement",
-      isRead: false,
-      createdDate: new Date(Date.now() - 1000 * 60 * 60 * 3).toISOString(),
-      actionType: "announcements"
-    },
-    {
-      id: "notif-3",
-      title: "Document available",
-      message: "A new tenancy document is available in your portal.",
-      type: "Document",
-      isRead: true,
-      createdDate: new Date(Date.now() - 1000 * 60 * 60 * 7).toISOString(),
-      actionType: "documents"
-    },
-    {
-      id: "notif-4",
-      title: "Maintenance status updated",
-      message: "Your repair request moved to In Progress.",
-      type: "Maintenance Update",
-      isRead: true,
-      createdDate: new Date(Date.now() - 1000 * 60 * 60 * 26).toISOString(),
-      actionType: "maintenance",
-      relatedRecordId: maintenanceItemsCache?.[0]?.id || maintenanceItemsCache?.[0]?.maintenanceId || null
-    },
-    {
-      id: "notif-5",
-      title: "Reminder from property team",
-      message: "Please upload an additional photo if possible.",
-      type: "Maintenance Message",
-      isRead: false,
-      createdDate: new Date(Date.now() - 1000 * 60 * 60 * 30).toISOString(),
-      actionType: "maintenance",
-      relatedRecordId: maintenanceItemsCache?.[0]?.id || maintenanceItemsCache?.[0]?.maintenanceId || null
-    },
-    {
-      id: "notif-6",
-      title: "Older document update",
-      message: "A historic tenancy file is available in Documents.",
-      type: "Document",
-      isRead: true,
-      createdDate: new Date(Date.now() - 1000 * 60 * 60 * 50).toISOString(),
-      actionType: "documents"
-    }
-  ];
-}
 
 function getUnreadNotificationsCount() {
   return notificationsCache.filter((item) => !item.isRead).length;
@@ -912,7 +851,12 @@ function toggleNotificationsDropdown() {
   }
 }
 
-function markNotificationAsRead(notificationId) {
+async function markNotificationAsRead(notificationId) {
+  await api("/api/notifications/read", {
+    method: "POST",
+    body: JSON.stringify({ notificationId })
+  });
+
   notificationsCache = notificationsCache.map((item) =>
     item.id === notificationId ? { ...item, isRead: true } : item
   );
@@ -920,7 +864,12 @@ function markNotificationAsRead(notificationId) {
   renderNotificationsDropdown();
 }
 
-function markAllNotificationsAsRead() {
+async function markAllNotificationsAsRead() {
+  await api("/api/notifications/read-all", {
+    method: "POST",
+    body: JSON.stringify({})
+  });
+
   notificationsCache = notificationsCache.map((item) => ({
     ...item,
     isRead: true
@@ -934,7 +883,7 @@ async function handleNotificationClick(notificationId) {
   const notification = notificationsCache.find((item) => item.id === notificationId);
   if (!notification) return;
 
-  markNotificationAsRead(notificationId);
+  await markNotificationAsRead(notificationId);
   closeNotificationsDropdown();
 
   if (notification.actionType === "maintenance" && notification.relatedRecordId) {
@@ -965,7 +914,8 @@ async function handleNotificationClick(notificationId) {
 async function loadNotifications(skipStatusMessage = false) {
   if (!skipStatusMessage) setStatus("loading", "Loading notifications");
 
-  notificationsCache = getMockNotifications();
+  const data = await api("/api/notifications");
+  notificationsCache = Array.isArray(data?.items) ? data.items : [];
   updateNotificationsBell();
 
   if (!skipStatusMessage) setStatus("ok", "Connected");
