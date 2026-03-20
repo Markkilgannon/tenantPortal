@@ -821,7 +821,9 @@ function renderNotificationsDropdown() {
   const target = $("notificationsDropdownList");
   if (!target) return;
 
-  const items = getRecentNotifications(5);
+  const items = getRecentNotifications(20);
+  const unreadItems = items.filter((item) => !item.isRead);
+  const readItems = items.filter((item) => item.isRead);
 
   if (!items.length) {
     target.innerHTML = `
@@ -833,31 +835,48 @@ function renderNotificationsDropdown() {
     return;
   }
 
-  target.innerHTML = items
-    .map((item) => {
-      const unreadClass = item.isRead ? "" : "notifications-dropdown__item--unread";
+  const renderGroup = (groupTitle, groupItems) => {
+    if (!groupItems.length) return "";
 
-      return `
-        <button
-          class="notifications-dropdown__item ${unreadClass}"
-          type="button"
-          data-notification-id="${escapeHtml(item.id)}"
-        >
-          <div class="notifications-dropdown__item-top">
-            <span class="notifications-dropdown__item-title">${escapeHtml(item.title || "Notification")}</span>
-            ${!item.isRead ? `<span class="notifications-dropdown__item-dot" aria-hidden="true"></span>` : ""}
-          </div>
+    return `
+      <div class="notifications-dropdown__group">
+        <div class="notifications-dropdown__group-heading">${escapeHtml(groupTitle)}</div>
 
-          <p class="notifications-dropdown__item-text">${escapeHtml(item.message || "No details available.")}</p>
+        <div class="notifications-dropdown__group-list">
+          ${groupItems
+            .map((item) => {
+              const unreadClass = item.isRead ? "" : "notifications-dropdown__item--unread";
 
-          <div class="notifications-dropdown__item-meta">
-            <span class="${notificationTypeBadgeClass(item.type)}">${escapeHtml(item.type || "Update")}</span>
-            <span>${escapeHtml(safeDateTime(item.createdDate))}</span>
-          </div>
-        </button>
-      `;
-    })
-    .join("");
+              return `
+                <button
+                  class="notifications-dropdown__item ${unreadClass}"
+                  type="button"
+                  data-notification-id="${escapeHtml(item.id)}"
+                >
+                  <div class="notifications-dropdown__item-top">
+                    <span class="notifications-dropdown__item-title">${escapeHtml(item.title || "Notification")}</span>
+                    ${!item.isRead ? `<span class="notifications-dropdown__item-dot" aria-hidden="true"></span>` : ""}
+                  </div>
+
+                  <p class="notifications-dropdown__item-text">${escapeHtml(item.message || "No details available.")}</p>
+
+                  <div class="notifications-dropdown__item-meta">
+                    <span class="${notificationTypeBadgeClass(item.type)}">${escapeHtml(item.type || "Update")}</span>
+                    <span>${escapeHtml(safeDateTime(item.createdDate))}</span>
+                  </div>
+                </button>
+              `;
+            })
+            .join("")}
+        </div>
+      </div>
+    `;
+  };
+
+  target.innerHTML = `
+    ${renderGroup("New", unreadItems)}
+    ${renderGroup("Earlier", readItems)}
+  `;
 
   updateNotificationsBell();
 }
