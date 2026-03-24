@@ -18,7 +18,12 @@ async function verifyAuth0Jwt(token, env) {
 export async function onRequestGet({ request, env }) {
   try {
     const token = getBearerToken(request);
-    if (!token) return new Response(JSON.stringify({ ok: false, error: "Missing Bearer token" }), { status: 401 });
+    if (!token) {
+      return new Response(JSON.stringify({ ok: false, error: "Missing Bearer token" }), {
+        status: 401,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
 
     const payload = await verifyAuth0Jwt(token, env);
     const sub = payload.sub;
@@ -35,12 +40,22 @@ export async function onRequestGet({ request, env }) {
     });
 
     const text = await resp.text();
-    const ct = resp.headers.get("content-type") || "";
-    const data = ct.includes("application/json") ? JSON.parse(text || "[]") : text;
+    let data = null;
+
+    try {
+      data = JSON.parse(text || "{}");
+    } catch {
+      data = { ok: false, message: "Invalid Salesforce response", raw: text };
+    }
 
     if (!resp.ok) {
-      return new Response(JSON.stringify({ ok: false, sfStatus: resp.status, sfBody: data }), {
-        status: 502,
+      return new Response(JSON.stringify({
+        ok: false,
+        error: data?.message || "Salesforce docs request failed",
+        sfStatus: resp.status,
+        sfBody: data,
+      }), {
+        status: resp.status,
         headers: { "Content-Type": "application/json" },
       });
     }
@@ -51,7 +66,11 @@ export async function onRequestGet({ request, env }) {
     });
 
   } catch (e) {
-    return new Response(JSON.stringify({ ok: false, error: "Server error", details: String(e?.message || e) }), {
+    return new Response(JSON.stringify({
+      ok: false,
+      error: "Server error",
+      details: String(e?.message || e),
+    }), {
       status: 500,
       headers: { "Content-Type": "application/json" },
     });
