@@ -464,7 +464,7 @@ async function openViewAndLoad(viewName) {
     await loadMaintenance(true);
   } else if (viewName === "documents") {
     renderSkeletonList("documentsList", 4);
-    await loadDocuments(true);
+    await loadDocuments(true, { render: true, updateMetrics: true });
   } else if (viewName === "announcements") {
     renderSkeletonList("announcementsList", 3);
     await loadAnnouncementsAndRender(true);
@@ -1147,16 +1147,16 @@ function formatDocumentDate(value) {
 }
 
 function renderDocuments() {
-  const listEl = document.getElementById("documentsList");
+  const listEl = $("documentsList");
   if (!listEl) return;
 
   if (!Array.isArray(documentsCache) || !documentsCache.length) {
-    listEl.innerHTML = `
-      <div class="empty-state">
-        <h3>No documents available</h3>
-        <p>Documents attached to your tenancy, unit, property, or lease will appear here.</p>
-      </div>
-    `;
+    renderEmptyState({
+      targetId: "documentsList",
+      title: "No documents available",
+      text: "Documents attached to your tenancy, unit, property, or lease will appear here.",
+      icon: "📄"
+    });
     return;
   }
 
@@ -1165,11 +1165,13 @@ function renderDocuments() {
       const ext = (doc.fileExtension || doc.fileType || "FILE").toUpperCase();
 
       return `
-        <div class="document-row">
+        <article class="document-row">
           <div class="document-row__main">
             <div class="document-icon">${escapeHtml(ext)}</div>
+
             <div class="document-meta">
-              <div class="document-title">${escapeHtml(doc.title || "Untitled document")}</div>
+              <h3 class="document-title">${escapeHtml(doc.title || "Untitled document")}</h3>
+
               <div class="document-sub">
                 <span>${escapeHtml(doc.sourceType || "Document")}</span>
                 <span>•</span>
@@ -1181,27 +1183,36 @@ function renderDocuments() {
               </div>
             </div>
           </div>
+
           <div class="document-row__actions">
-            <button class="btn btn-secondary" type="button" data-doc-download="${escapeHtml(doc.contentVersionId || "")}">
+            <button
+              class="btn btn--ghost btn--sm"
+              type="button"
+              data-doc-download="${escapeHtml(doc.contentVersionId || "")}"
+            >
               Download
             </button>
           </div>
-        </div>
+        </article>
       `;
     })
     .join("");
 
   listEl.querySelectorAll("[data-doc-download]").forEach((btn) => {
-    btn.addEventListener("click", () => {
+    btn.addEventListener("click", async () => {
       const versionId = btn.getAttribute("data-doc-download");
       const doc = documentsCache.find((item) => item.contentVersionId === versionId);
-      if (doc) {
-        downloadDocument(doc);
+      if (!doc) return;
+
+      try {
+        await downloadDocument(doc);
+      } catch (error) {
+        console.error(error);
+        showToast(error.message || "Unable to download document.");
       }
     });
   });
 }
-
 async function downloadDocument(doc) {
   try {
     if (!doc?.contentVersionId) {
@@ -1536,27 +1547,35 @@ async function loadMaintenance(skipStatusMessage = false) {
   updateDashboardMetrics();
 }
 
-async function loadDocuments(force = false) {
+async function loadDocuments(force = false, options = {}) {
+  const { render = true, updateMetrics = true, skipStatusMessage = false } = options;
+
   if (!force && Array.isArray(documentsCache) && documentsCache.length) {
+    if (render) renderDocuments();
+    if (updateMetrics) updateDashboardMetrics();
     return documentsCache;
   }
 
-  const token = await auth0Client.getTokenSilently();
-
-  const res = await fetch("/api/docs", {
-    method: "GET",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  const data = await res.json();
-
-  if (!res.ok || !data?.ok) {
-    throw new Error(data?.error || data?.message || "Failed to load documents");
+  if (!skipStatusMessage) {
+    setStatus("loading", "Loading documents");
   }
 
-  documentsCache = Array.isArray(data.documents) ? data.documents : [];
+  const data = await api("/api/docs");
+
+  documentsCache = Array.isArray(data?.documents) ? data.documents : [];
+
+  if (render) {
+    renderDocuments();
+  }
+
+  if (updateMetrics) {
+    updateDashboardMetrics();
+  }
+
+  if (!skipStatusMessage) {
+    setStatus("ok", "Connected");
+  }
+
   return documentsCache;
 }
 
@@ -2183,24 +2202,6 @@ if (notificationBtn) {
       return;
     }
 
-    const docBtn = event.target.closest("[data-doc-download]");
-    if (docBtn) {
-      const id = docBtn.dataset.docDownload;
-      const doc = documentsCache.find((item) => {
-        return String(item.contentDocumentId || item.id) === String(id);
-      });
-
-      if (doc) {
-        try {
-          await downloadDocument(doc);
-        } catch (error) {
-          setStatus("error", "Service unavailable");
-          showToast(error.message || "Unable to download document.");
-        }
-      }
-      return;
-    }
-
     const maintenanceOpenBtn = event.target.closest("[data-maintenance-open]");
     if (maintenanceOpenBtn) {
       const id = maintenanceOpenBtn.dataset.maintenanceOpen;
@@ -2301,13 +2302,13 @@ async function boot() {
     renderSkeletonList("documentsList", 4);
     renderSkeletonList("announcementsList", 3);
 
-    await Promise.all([
-      loadMe(),
-      loadMaintenance(true),
-      loadDocuments(true),
-      loadAnnouncementsAndRender(true),
-       loadNotifications(true)
-    ]);
+await Promise.all([
+  loadMe(),
+  loadMaintenance(true),
+  loadDocuments(true, { render: false, updateMetrics: false, skipStatusMessage: true }),
+  loadAnnouncementsAndRender(true),
+  loadNotifications(true)
+]);
 
     const savedView = getSavedView();
     setActiveView(savedView, { skipScroll: true });
@@ -2315,7 +2316,8 @@ async function boot() {
     if (savedView === "maintenance") {
       renderFilteredMaintenance();
     } else if (savedView === "documents") {
-      renderDocuments(documentsCache);
+  renderDocuments();
+}
     } else if (savedView === "announcements") {
       renderAnnouncements(announcementsCache, "announcementsList");
     } else if (savedView === "profile") {
