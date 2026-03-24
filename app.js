@@ -2317,7 +2317,6 @@ await Promise.all([
       renderFilteredMaintenance();
     } else if (savedView === "documents") {
   renderDocuments();
-}
     } else if (savedView === "announcements") {
       renderAnnouncements(announcementsCache, "announcementsList");
     } else if (savedView === "profile") {
