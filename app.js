@@ -1119,93 +1119,97 @@ function groupDocuments(items) {
   return groups;
 }
 
-function renderDocuments(items) {
-  const target = $("documentsList");
-  if (!target) return;
+function renderDocuments() {
+  const listEl = document.getElementById("documentsList");
+  if (!listEl) return;
 
-  if (!items || items.length === 0) {
-    renderEmptyState({
-      targetId: "documentsList",
-      title: "No documents available yet",
-      text: "There are no documents available for your tenancy at the moment.",
-      icon: "📄"
-    });
+  if (!documentsCache.length) {
+    listEl.innerHTML = `
+      <div class="empty-state">
+        <h3>No documents available</h3>
+        <p>Documents attached to your tenancy, unit, property, or lease will appear here.</p>
+      </div>
+    `;
     return;
   }
 
-  const grouped = groupDocuments(items);
-  const sections = Object.entries(grouped)
-    .filter(([, docs]) => docs.length > 0)
-    .map(([groupName, docs]) => {
-      const docsHtml = docs
-        .map((doc) => {
-          const id = escapeHtml(doc.contentDocumentId || doc.id || "");
-          return `
-            <article class="list-item">
-              <div class="list-item__top">
-                <div>
-                  <h3 class="list-item__title">${escapeHtml(doc.title || doc.name || "Document")}</h3>
-                  <p class="list-item__meta">${escapeHtml(
-                    safeText(doc.fileType || doc.type || "File")
-                  )} • ${escapeHtml(formatDate(doc.createdDate || doc.lastModifiedDate))}</p>
-                </div>
-                <div class="list-item__actions">
-                  <button class="btn btn--ghost btn--sm" data-doc-download="${id}" type="button">
-                    Download
-                  </button>
-                </div>
-              </div>
-            </article>
-          `;
-        })
-        .join("");
-
-      return `
-        <section class="document-group">
-          <div class="section-header">
-            <div>
-              <p class="eyebrow eyebrow--tight">Category</p>
-              <h3 class="section-title">${escapeHtml(groupName)}</h3>
+  listEl.innerHTML = documentsCache
+    .map((doc) => `
+      <div class="document-row">
+        <div class="document-row__main">
+          <div class="document-meta">
+            <div class="document-title">${escapeHtml(doc.title || "Untitled document")}</div>
+            <div class="document-sub">
+              <span>${escapeHtml(doc.sourceType || "Document")}</span>
+              <span>•</span>
+              <span>${escapeHtml(doc.sourceLabel || "—")}</span>
             </div>
           </div>
-          <div class="list-stack">${docsHtml}</div>
-        </section>
-      `;
-    })
+        </div>
+        <div class="document-row__actions">
+          <button class="btn btn-secondary" data-doc-download="${escapeHtml(doc.contentVersionId)}">
+            Download
+          </button>
+        </div>
+      </div>
+    `)
     .join("");
 
-  target.innerHTML = sections;
+  listEl.querySelectorAll("[data-doc-download]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const versionId = btn.getAttribute("data-doc-download");
+      const doc = documentsCache.find((d) => d.contentVersionId === versionId);
+      if (doc) downloadDocument(doc);
+    });
+  });
 }
 
 async function downloadDocument(doc) {
-  const contentDocumentId = doc.contentDocumentId || doc.id;
-  if (!contentDocumentId) {
-    throw new Error("Document ID was not available for download.");
-  }
-
-  setStatus("loading", "Preparing download");
-  const url = `/api/docs/download?id=${encodeURIComponent(contentDocumentId)}`;
-  const response = await fetch(url, {
-    headers: {
-      Authorization: `Bearer ${await getAccessToken()}`
+  try {
+    if (!doc?.contentVersionId) {
+      showToast("This document cannot be downloaded right now.", "error");
+      return;
     }
-  });
 
-  if (!response.ok) {
-    throw new Error(`Download failed with status ${response.status}`);
+    const token = await auth0Client.getTokenSilently();
+
+    const res = await fetch(
+      `/api/docs/download?contentVersionId=${encodeURIComponent(doc.contentVersionId)}`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+
+    if (!res.ok) {
+      let message = "Download failed";
+      try {
+        const err = await res.json();
+        message = err?.error || err?.message || message;
+      } catch {}
+      throw new Error(message);
+    }
+
+    const blob = await res.blob();
+    const blobUrl = window.URL.createObjectURL(blob);
+
+    const ext = doc.fileExtension ? `.${doc.fileExtension}` : "";
+    const filename = `${doc.title || "document"}${ext}`;
+
+    const a = document.createElement("a");
+    a.href = blobUrl;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    window.URL.revokeObjectURL(blobUrl);
+  } catch (err) {
+    console.error("Document download failed", err);
+    showToast(err?.message || "Download failed", "error");
   }
-
-  const blob = await response.blob();
-  const objectUrl = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = objectUrl;
-  a.download = doc.title || doc.name || "document";
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(objectUrl);
-  setStatus("ok", "Connected");
-  showToast("Document download started.");
 }
 
 /* =========================================================
@@ -1495,13 +1499,28 @@ async function loadMaintenance(skipStatusMessage = false) {
   updateDashboardMetrics();
 }
 
-async function loadDocuments(skipStatusMessage = false) {
-  if (!skipStatusMessage) setStatus("loading", "Loading documents");
-  const data = await api("/api/docs");
-  documentsCache = Array.isArray(data) ? data : data?.items || [];
-  renderDocuments(documentsCache);
-  if (!skipStatusMessage) setStatus("ok", "Connected");
-  updateDashboardMetrics();
+async function loadDocuments(force = false) {
+  if (!force && Array.isArray(documentsCache) && documentsCache.length) {
+    return documentsCache;
+  }
+
+  const token = await auth0Client.getTokenSilently();
+
+  const res = await fetch("/api/docs", {
+    method: "GET",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const data = await res.json();
+
+  if (!res.ok || !data?.ok) {
+    throw new Error(data?.error || data?.message || "Failed to load documents");
+  }
+
+  documentsCache = Array.isArray(data.documents) ? data.documents : [];
+  return documentsCache;
 }
 
 async function loadAnnouncementsAndRender(skipStatusMessage = false) {
