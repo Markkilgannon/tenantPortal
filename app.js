@@ -1119,11 +1119,38 @@ function groupDocuments(items) {
   return groups;
 }
 
+function formatBytes(bytes) {
+  if (bytes == null) return "—";
+  const sizes = ["B", "KB", "MB", "GB"];
+  let value = bytes;
+  let index = 0;
+
+  while (value >= 1024 && index < sizes.length - 1) {
+    value /= 1024;
+    index++;
+  }
+
+  const rounded = value >= 10 || index === 0 ? value.toFixed(0) : value.toFixed(1);
+  return `${rounded} ${sizes[index]}`;
+}
+
+function formatDocumentDate(value) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return "—";
+
+  return d.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+}
+
 function renderDocuments() {
   const listEl = document.getElementById("documentsList");
   if (!listEl) return;
 
-  if (!documentsCache.length) {
+  if (!Array.isArray(documentsCache) || !documentsCache.length) {
     listEl.innerHTML = `
       <div class="empty-state">
         <h3>No documents available</h3>
@@ -1134,32 +1161,43 @@ function renderDocuments() {
   }
 
   listEl.innerHTML = documentsCache
-    .map((doc) => `
-      <div class="document-row">
-        <div class="document-row__main">
-          <div class="document-meta">
-            <div class="document-title">${escapeHtml(doc.title || "Untitled document")}</div>
-            <div class="document-sub">
-              <span>${escapeHtml(doc.sourceType || "Document")}</span>
-              <span>•</span>
-              <span>${escapeHtml(doc.sourceLabel || "—")}</span>
+    .map((doc) => {
+      const ext = (doc.fileExtension || doc.fileType || "FILE").toUpperCase();
+
+      return `
+        <div class="document-row">
+          <div class="document-row__main">
+            <div class="document-icon">${escapeHtml(ext)}</div>
+            <div class="document-meta">
+              <div class="document-title">${escapeHtml(doc.title || "Untitled document")}</div>
+              <div class="document-sub">
+                <span>${escapeHtml(doc.sourceType || "Document")}</span>
+                <span>•</span>
+                <span>${escapeHtml(doc.sourceLabel || "—")}</span>
+                <span>•</span>
+                <span>${escapeHtml(formatDocumentDate(doc.lastModified))}</span>
+                <span>•</span>
+                <span>${escapeHtml(formatBytes(doc.contentSize))}</span>
+              </div>
             </div>
           </div>
+          <div class="document-row__actions">
+            <button class="btn btn-secondary" type="button" data-doc-download="${escapeHtml(doc.contentVersionId || "")}">
+              Download
+            </button>
+          </div>
         </div>
-        <div class="document-row__actions">
-          <button class="btn btn-secondary" data-doc-download="${escapeHtml(doc.contentVersionId)}">
-            Download
-          </button>
-        </div>
-      </div>
-    `)
+      `;
+    })
     .join("");
 
   listEl.querySelectorAll("[data-doc-download]").forEach((btn) => {
     btn.addEventListener("click", () => {
       const versionId = btn.getAttribute("data-doc-download");
-      const doc = documentsCache.find((d) => d.contentVersionId === versionId);
-      if (doc) downloadDocument(doc);
+      const doc = documentsCache.find((item) => item.contentVersionId === versionId);
+      if (doc) {
+        downloadDocument(doc);
+      }
     });
   });
 }
@@ -1195,8 +1233,8 @@ async function downloadDocument(doc) {
     const blob = await res.blob();
     const blobUrl = window.URL.createObjectURL(blob);
 
-    const ext = doc.fileExtension ? `.${doc.fileExtension}` : "";
-    const filename = `${doc.title || "document"}${ext}`;
+    const extension = doc.fileExtension ? `.${doc.fileExtension}` : "";
+    const filename = `${doc.title || "document"}${extension}`;
 
     const a = document.createElement("a");
     a.href = blobUrl;
@@ -1206,12 +1244,11 @@ async function downloadDocument(doc) {
     a.remove();
 
     window.URL.revokeObjectURL(blobUrl);
-  } catch (err) {
-    console.error("Document download failed", err);
-    showToast(err?.message || "Download failed", "error");
+  } catch (error) {
+    console.error("Document download failed", error);
+    showToast(error?.message || "Download failed", "error");
   }
 }
-
 /* =========================================================
    17. GENERIC TIMELINE RENDERING
    ========================================================= */
