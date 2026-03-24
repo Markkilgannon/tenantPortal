@@ -1161,11 +1161,12 @@ function renderDocuments() {
   }
 
   listEl.innerHTML = documentsCache
-    .map((doc) => {
+    .map((doc, index) => {
       const ext = (doc.fileExtension || doc.fileType || "FILE").toUpperCase();
+      const rowClass = index === 0 ? "document-row document-row--featured" : "document-row";
 
       return `
-        <article class="document-row">
+        <article class="${rowClass}">
           <div class="document-row__main">
             <div class="document-icon">${escapeHtml(ext)}</div>
 
@@ -1173,7 +1174,7 @@ function renderDocuments() {
               <h3 class="document-title">${escapeHtml(doc.title || "Untitled document")}</h3>
 
               <div class="document-sub">
-                <span>${escapeHtml(doc.sourceType || "Document")}</span>
+                <span class="document-source-badge">${escapeHtml(doc.sourceType || "Document")}</span>
                 <span>•</span>
                 <span>${escapeHtml(doc.sourceLabel || "—")}</span>
                 <span>•</span>
