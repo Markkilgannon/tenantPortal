@@ -828,9 +828,9 @@ button {
 }
 
 #view-documents .panel-card {
-  max-width: 1120px;
+  width: 100%;
+  max-width: none;
 }
-
 /* =========================================================
    11. SHARED CARDS / PANELS / CALLOUTS / LIST ITEMS
    ========================================================= */
