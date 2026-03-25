@@ -1043,16 +1043,12 @@ button {
   gap: 14px;
 }
 
-#view-documents .panel-card {
-  max-width: 1120px;
-}
-
 .document-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: 18px;
-  padding: 16px 18px;
+  gap: 16px;
+  padding: 14px 16px;
   border: 1px solid var(--border);
   border-radius: 18px;
   background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
@@ -1106,7 +1102,7 @@ button {
 
 .document-title {
   margin: 0;
-  font-size: 15px;
+  font-size: 14px;
   line-height: 1.25;
   font-weight: 700;
   letter-spacing: -0.02em;
@@ -1115,7 +1111,7 @@ button {
 }
 
 .document-sub {
-  margin-top: 6px;
+  margin-top: 4px;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -1154,7 +1150,8 @@ button {
 }
 
 .document-row__actions .btn {
-  min-width: 96px;
+  min-width: 104px;
+  width: auto;
 }
 
 /* =========================================================
