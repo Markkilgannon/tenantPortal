@@ -1043,12 +1043,16 @@ button {
   gap: 14px;
 }
 
+#view-documents .panel-card {
+  max-width: 1120px;
+}
+
 .document-row {
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  justify-content: space-between;
   gap: 18px;
-  padding: 18px 20px;
+  padding: 16px 18px;
   border: 1px solid var(--border);
   border-radius: 18px;
   background: linear-gradient(180deg, #ffffff 0%, #fbfcff 100%);
@@ -1074,19 +1078,18 @@ button {
 .document-row__main {
   display: flex;
   align-items: center;
-  gap: 16px;
+  gap: 14px;
   min-width: 0;
-  flex: 1;
 }
 
 .document-icon {
-  width: 52px;
-  height: 52px;
-  border-radius: 16px;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
   display: grid;
   place-items: center;
   flex-shrink: 0;
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
@@ -1103,8 +1106,8 @@ button {
 
 .document-title {
   margin: 0;
-  font-size: 18px;
-  line-height: 1.2;
+  font-size: 15px;
+  line-height: 1.25;
   font-weight: 700;
   letter-spacing: -0.02em;
   color: var(--text);
@@ -1112,13 +1115,13 @@ button {
 }
 
 .document-sub {
-  margin-top: 8px;
+  margin-top: 6px;
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   align-items: center;
   font-size: 13px;
-  line-height: 1.5;
+  line-height: 1.45;
   color: var(--text-soft);
 }
 
@@ -1133,24 +1136,25 @@ button {
 .document-source-badge {
   display: inline-flex;
   align-items: center;
-  min-height: 24px;
-  padding: 0 9px;
+  min-height: 22px;
+  padding: 0 8px;
   border-radius: 999px;
   background: var(--primary-soft);
   color: var(--primary-dark);
   border: 1px solid rgba(99, 91, 255, 0.12);
-  font-size: 12px;
+  font-size: 11px;
   font-weight: 700;
 }
 
 .document-row__actions {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   flex-shrink: 0;
 }
 
 .document-row__actions .btn {
-  min-width: 108px;
+  min-width: 96px;
 }
 
 /* =========================================================
@@ -1386,6 +1390,16 @@ button {
   background: var(--primary-soft);
   color: var(--primary-dark);
   border-color: rgba(99, 91, 255, 0.18);
+}
+
+.document-row__actions .btn--ghost {
+  background: #fff;
+  border-color: var(--border);
+}
+
+.document-row__actions .btn--ghost:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--shadow-soft);
 }
 
 /* =========================================================
@@ -2386,9 +2400,10 @@ button {
   }
 }
 
-  .document-row {
-    flex-direction: column;
+   .document-row {
+    grid-template-columns: 1fr;
     align-items: stretch;
+    gap: 14px;
     padding: 16px;
   }
 
@@ -2398,6 +2413,7 @@ button {
 
   .document-row__actions {
     width: 100%;
+    justify-content: stretch;
   }
 
   .document-row__actions .btn {
@@ -2409,11 +2425,10 @@ button {
   }
 
   .document-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 14px;
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
   }
-
 @media (max-width: 680px) {
   .timeline-item__top {
     flex-direction: column;
